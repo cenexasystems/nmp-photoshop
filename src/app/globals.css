@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --color-gold-50: #fbf9f2;
+  --color-gold-100: #f6efe0;
+  --color-gold-200: #ecdbc1;
+  --color-gold-300: #e0c29a;
+  --color-gold-400: #d4af37;
+  --color-gold-500: #c29528;
+  --color-gold-600: #a77721;
+  --color-gold-700: #85581c;
+  --color-gold-800: #6f471e;
+  --color-gold-900: #5a3a1b;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-dark-900: #111110;
+  --color-dark-800: #1a1a18;
+  --color-dark-700: #262624;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-panel-bg: #fcfcfb;
+  --color-panel-border: #f0ebe1;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-gold-50 text-dark-900;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gold-200 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gold-300;
+}
+
+/* Input styles without arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
