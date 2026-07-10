@@ -1,6 +1,6 @@
 "use client";
 
-import { SidebarLayout } from "@/components/SidebarLayout";
+import { AdminSidebarLayout } from "@/components/AdminSidebarLayout";
 import { Wallet } from "lucide-react";
 import { useState } from "react";
 import { clsx, type ClassValue } from "clsx";
@@ -25,6 +25,7 @@ export default function ExpensesPage() {
   const [date, setDate] = useState("2026-07-08");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [amount, setAmount] = useState("");
+  const [paymentMode, setPaymentMode] = useState("Cash");
   const [notes, setNotes] = useState("");
   const [period, setPeriod] = useState("Today");
 
@@ -33,7 +34,7 @@ export default function ExpensesPage() {
   const total = 0;
 
   return (
-    <SidebarLayout>
+    <AdminSidebarLayout>
       <div className="flex flex-col gap-6 h-full pb-10">
         
         {/* Header Section */}
@@ -89,6 +90,19 @@ export default function ExpensesPage() {
                   placeholder="0.00"
                   className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold focus:bg-white rounded-xl px-4 py-2.5 outline-none transition-colors text-sm font-black text-dark-900"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-dark-500 mb-1.5 uppercase tracking-widest">Expense Method</label>
+                <select 
+                  value={paymentMode}
+                  onChange={(e) => setPaymentMode(e.target.value)}
+                  className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold focus:bg-white rounded-xl px-4 py-2.5 outline-none transition-colors text-sm font-bold text-dark-900 uppercase tracking-wider"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="GPay">GPay</option>
+                  <option value="Card">Card</option>
+                </select>
               </div>
 
               <div>
@@ -148,6 +162,6 @@ export default function ExpensesPage() {
         </div>
 
       </div>
-    </SidebarLayout>
+    </AdminSidebarLayout>
   );
 }

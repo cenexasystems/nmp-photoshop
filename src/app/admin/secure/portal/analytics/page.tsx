@@ -1,6 +1,6 @@
 "use client";
 
-import { SidebarLayout } from "@/components/SidebarLayout";
+import { AdminSidebarLayout } from "@/components/AdminSidebarLayout";
 import { Calendar, TrendingUp, IndianRupee, FileText, Smartphone, Package, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import { clsx, type ClassValue } from "clsx";
@@ -15,7 +15,7 @@ export default function AnalyticsPage() {
   const [tab, setTab] = useState("REVENUE");
 
   return (
-    <SidebarLayout>
+    <AdminSidebarLayout>
       <div className="flex flex-col gap-6 h-full pb-10">
         
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -275,6 +275,6 @@ export default function AnalyticsPage() {
         </div>
 
       </div>
-    </SidebarLayout>
+    </AdminSidebarLayout>
   );
 }

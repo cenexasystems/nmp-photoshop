@@ -1,27 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  --color-gold-50: #fbf9f2;
-  --color-gold-100: #f6efe0;
-  --color-gold-200: #ecdbc1;
-  --color-gold-300: #e0c29a;
-  --color-gold-400: #d4af37;
-  --color-gold-500: #c29528;
-  --color-gold-600: #a77721;
-  --color-gold-700: #85581c;
-  --color-gold-800: #6f471e;
-  --color-gold-900: #5a3a1b;
+  /* Core brand color */
+  --color-brand-gold: #84681E;
 
-  --color-dark-900: #111110;
-  --color-dark-800: #1a1a18;
-  --color-dark-700: #262624;
+  /* Beige/Gold Palette */
+  --color-gold-50: #fbf9f5;
+  --color-gold-100: #f4efdf;
+  --color-gold-200: #e2d3b2;
+  --color-gold-300: #ccb27e;
+  --color-gold-400: #b5924e;
+  --color-gold-500: #84681E;
+  --color-gold-600: #755a19;
+  --color-gold-700: #5d4611;
+  --color-gold-800: #4a370b;
+  --color-gold-900: #3b2b07;
 
-  --color-panel-bg: #fcfcfb;
-  --color-panel-border: #f0ebe1;
+  /* Dark Text Palette */
+  --color-dark-950: #0a0907;
+  --color-dark-900: #1a1612;
+  --color-dark-800: #2b251e;
+  --color-dark-700: #3d342a;
+  --color-dark-600: #524739;
+  --color-dark-500: #685949;
 }
 
 body {
-  @apply bg-gold-50 text-dark-900;
+  @apply bg-[#f8f5ee] text-dark-900;
 }
 
 /* Custom scrollbar */
@@ -36,7 +41,7 @@ body {
   @apply bg-gold-200 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gold-300;
+  @apply bg-brand-gold;
 }
 
 /* Input styles without arrows */
