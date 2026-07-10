@@ -22,16 +22,16 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const NAV_ITEMS = [
-  { href: "/", label: "BILLING", icon: Calculator },
-  { href: "/history", label: "ORDERS", icon: History },
-  { href: "/analytics", label: "ANALYTICS", icon: BarChart3 },
-  { href: "/customers", label: "CUSTOMERS", icon: Users },
-  { href: "/expenses", label: "EXPENSES", icon: Wallet },
-];
-
 export function SidebarLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const branch = pathname.split('/')[1] || 'pos';
+
+  const NAV_ITEMS = [
+    { href: `/${branch}`, label: "BILLING", icon: Calculator },
+    { href: `/${branch}/history`, label: "ORDERS", icon: History },
+    { href: `/${branch}/customers`, label: "CUSTOMERS", icon: Users },
+  ];
+
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -60,7 +60,10 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
               GR
             </div>
             {(!isCollapsed || isMobileOpen) && (
-              <h1 className="font-bold text-lg tracking-widest uppercase text-dark-900 whitespace-nowrap">Golden</h1>
+              <div>
+                <h1 className="font-bold text-lg tracking-widest uppercase text-dark-900 whitespace-nowrap">Golden</h1>
+                <p className="text-[9px] font-bold text-brand-gold uppercase tracking-widest mt-0.5">{branch.replace(/-/g, ' ')} Branch</p>
+              </div>
             )}
           </div>
           
@@ -69,13 +72,14 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
 
+
         <nav className="flex-1 py-6 flex flex-col gap-1 px-3 overflow-y-auto overflow-x-hidden">
           {(!isCollapsed || isMobileOpen) && (
             <div className="px-3 mb-2 text-[10px] uppercase tracking-[0.2em] text-dark-500 font-bold">Main Menu</div>
           )}
           
           {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== `/${branch}` && pathname.startsWith(item.href));
             const Icon = item.icon;
             return (
               <Link
