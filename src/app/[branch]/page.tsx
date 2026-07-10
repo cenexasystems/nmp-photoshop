@@ -90,7 +90,10 @@ export default function Home() {
 
   const handleWhatsApp = () => {
     const target = customerPhone.length === 10 ? customerPhone : "7904199050";
-    let text = `*New Order from Golden Retail* 📸\n\n`;
+    const cameraEmoji = String.fromCodePoint(0x1F4F8);
+    const sparkleEmoji = String.fromCodePoint(0x2728);
+    
+    let text = `*New Order from Golden Retail* ${cameraEmoji}\n\n`;
     text += `*Customer:* ${customerName || 'Walk-in'} (${customerPhone || 'N/A'})\n`;
     text += `*Staff:* ${staffName}\n`;
     if (customerDate) text += `*Date:* ${customerDate}\n`;
@@ -105,9 +108,18 @@ export default function Home() {
     text += `*Payment Status:* ${amountStatus}\n`;
     text += `*Payment Mode:* ${paymentMode}\n`;
     if (notes) text += `*Notes:* ${notes}\n`;
-    text += `\nThank you for choosing Golden Retail! ✨`;
+    text += `\nThank you for choosing Golden Retail! ${sparkleEmoji}`;
     
-    window.open(`https://wa.me/91${target}?text=${encodeURIComponent(text)}`, "_blank");
+    const encodedMessage = encodeURIComponent(text);
+    window.open(`https://api.whatsapp.com/send/?phone=91${target}&text=${encodedMessage}`, "_blank");
+    
+    // Clear order for the next customer
+    setCart([]);
+    setCustomerName("");
+    setCustomerPhone("");
+    setCustomerDate("");
+    setAmountPaid("");
+    setNotes("");
   };
   
   return (

@@ -2,7 +2,7 @@
 
 import { ReactNode, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   Calculator, 
   History, 
@@ -30,6 +30,7 @@ const NAV_ITEMS = [
 
 export function AdminSidebarLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -108,6 +109,7 @@ export function AdminSidebarLayout({ children }: { children: ReactNode }) {
         <div className="p-4 border-t border-gold-100">
           <button 
             title="Sign Out"
+            onClick={() => router.push('/')}
             className={cn("flex items-center gap-4 px-4 py-3 rounded-xl text-dark-600 hover:bg-red-50 hover:text-red-600 transition-all w-full font-semibold group",
               isCollapsed && !isMobileOpen ? "justify-center px-0" : ""
             )}

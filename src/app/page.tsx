@@ -64,15 +64,6 @@ export default function BranchSelectionPage() {
         ))}
       </div>
       
-      <div className="mt-16 text-center">
-        <button 
-          onClick={() => router.push('/admin/secure/portal/analytics')}
-          className="text-[10px] font-bold text-dark-400 hover:text-dark-900 uppercase tracking-widest flex items-center gap-2 transition-colors"
-        >
-          <Building2 size={14} />
-          Go to Secure Admin Portal
-        </button>
-      </div>
     </div>
   );
 }
