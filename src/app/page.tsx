@@ -1,7 +1,8 @@
 "use client";
 
-import { Building2, Store } from "lucide-react";
+import { Building2, Store, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -62,6 +63,15 @@ export default function BranchSelectionPage() {
             </div>
           </button>
         ))}
+      </div>
+
+      <div className="mt-12 text-center">
+        <Link 
+          href="/download"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-gold-200 bg-white shadow-sm text-[10px] font-bold uppercase tracking-widest text-dark-600 transition-all hover:bg-gold-50 hover:-translate-y-0.5 hover:shadow-md"
+        >
+          <Download size={14} className="text-brand-gold" /> Install Desktop / Mobile App
+        </Link>
       </div>
       
     </div>
