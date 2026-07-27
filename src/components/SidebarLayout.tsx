@@ -30,7 +30,6 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
   const NAV_ITEMS = [
     { href: `/${branch}`, label: "BILLING", icon: Calculator },
     { href: `/${branch}/history`, label: "ORDERS", icon: History },
-    { href: `/${branch}/customers`, label: "CUSTOMERS", icon: Users },
   ];
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -50,8 +49,8 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className={cn(
         "fixed inset-y-0 left-0 z-50 bg-white border-r border-gold-200 flex flex-col transition-all duration-300 shadow-sm",
-        isMobileOpen ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0 lg:relative",
-        isCollapsed && !isMobileOpen ? "lg:w-20" : "lg:w-72"
+        isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0 lg:relative",
+        isCollapsed && !isMobileOpen ? "lg:w-20" : "lg:w-64"
       )}>
         <div className={cn("p-6 flex items-center border-b border-gold-100", 
           isCollapsed && !isMobileOpen ? "justify-center" : "justify-between"
@@ -111,7 +110,10 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
         <div className="p-4 border-t border-gold-100">
           <button 
             title="Sign Out"
-            onClick={() => router.push('/')}
+            onClick={() => {
+              document.cookie = "auth_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+              router.push('/');
+            }}
             className={cn("flex items-center gap-4 px-4 py-3 rounded-xl text-dark-600 hover:bg-red-50 hover:text-red-600 transition-all w-full font-semibold group",
               isCollapsed && !isMobileOpen ? "justify-center px-0" : ""
             )}
@@ -147,8 +149,8 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
         
-        <div className="flex-1 overflow-auto p-4 lg:p-8">
-          <div className="max-w-7xl mx-auto h-full">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto">
             {children}
           </div>
         </div>
