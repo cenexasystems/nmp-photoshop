@@ -1,8 +1,9 @@
 "use client";
 
-import { Building2, Store, Download } from "lucide-react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { loginAction } from "./actions";
+import { Lock } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -10,70 +11,70 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const BRANCHES = [
-  { id: "chennai-main", name: "Chennai Main", location: "T. Nagar" },
-  { id: "bangalore-hub", name: "Bangalore Hub", location: "Indiranagar" },
-  { id: "mumbai-central", name: "Mumbai Central", location: "Andheri West" },
-];
-
-export default function BranchSelectionPage() {
+export default function LoginPage() {
   const router = useRouter();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const selectBranch = (branchId: string) => {
-    router.push(`/${branchId}`);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const result = await loginAction(formData);
+
+    if (result?.error) {
+      setError(result.error);
+      setLoading(false);
+    } else if (result?.redirect) {
+      router.push(result.redirect);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#f8f5ee] flex flex-col items-center justify-center p-6 selection:bg-brand-gold/30">
-      
-      <div className="w-full max-w-2xl text-center mb-10">
+      <div className="w-full max-w-md bg-white p-10 rounded-3xl shadow-xl border border-gold-200 flex flex-col items-center">
         <div className="w-16 h-16 rounded-2xl bg-brand-gold mx-auto flex items-center justify-center font-bold text-white text-3xl tracking-tighter shadow-lg mb-6">
-          GR
+          <Lock className="text-white" size={28} strokeWidth={2} />
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-widest uppercase text-dark-900 mb-3">
-          Golden Retail POS
+        
+        <h1 className="text-3xl font-bold tracking-widest uppercase text-dark-900 mb-2 text-center">
+          Secure Access
         </h1>
-        <p className="text-sm text-dark-500 font-bold uppercase tracking-[0.2em]">
-          Select your active branch to begin billing
+        <p className="text-xs text-dark-500 font-bold uppercase tracking-[0.2em] mb-8 text-center">
+          Enter your credentials to continue
         </p>
-      </div>
 
-      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
-        {BRANCHES.map((branch) => (
+        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-dark-700 uppercase tracking-widest">
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              required
+              className="w-full px-4 py-3 rounded-xl border border-gold-200 bg-[#f8f5ee]/50 focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold/50 transition-all text-dark-900"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && (
+            <div className="text-red-500 text-xs font-bold uppercase tracking-widest text-center mt-2">
+              {error}
+            </div>
+          )}
+
           <button
-            key={branch.id}
-            onClick={() => selectBranch(branch.id)}
-            className="bg-white p-8 rounded-3xl shadow-sm border border-gold-200 flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-1 hover:shadow-xl hover:border-brand-gold/50 group"
+            type="submit"
+            disabled={loading}
+            className="w-full mt-4 px-6 py-4 rounded-xl bg-brand-gold text-white text-xs font-bold uppercase tracking-widest hover:bg-brand-gold/90 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
           >
-            <div className="w-16 h-16 rounded-full bg-gold-50 flex items-center justify-center group-hover:bg-brand-gold/10 transition-colors">
-              <Store className="text-brand-gold" size={28} strokeWidth={1.5} />
-            </div>
-            
-            <div className="text-center">
-              <h2 className="text-lg font-bold text-dark-900 tracking-widest uppercase mb-1 group-hover:text-brand-gold transition-colors">
-                {branch.name}
-              </h2>
-              <p className="text-[10px] font-bold text-dark-400 uppercase tracking-widest">
-                {branch.location}
-              </p>
-            </div>
-
-            <div className="mt-4 px-6 py-2 rounded-full bg-gold-50 text-[9px] font-bold text-dark-600 uppercase tracking-widest group-hover:bg-brand-gold group-hover:text-white transition-all">
-              Enter POS →
-            </div>
+            {loading ? "Authenticating..." : "Login"}
           </button>
-        ))}
+        </form>
       </div>
-
-      <div className="mt-12 text-center">
-        <Link 
-          href="/download"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-gold-200 bg-white shadow-sm text-[10px] font-bold uppercase tracking-widest text-dark-600 transition-all hover:bg-gold-50 hover:-translate-y-0.5 hover:shadow-md"
-        >
-          <Download size={14} className="text-brand-gold" /> Install Desktop / Mobile App
-        </Link>
-      </div>
-      
     </div>
   );
 }

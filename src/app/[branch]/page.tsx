@@ -2,7 +2,7 @@
 
 import { SidebarLayout } from "@/components/SidebarLayout";
 import { User, Trash2, Plus, CreditCard, Camera } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -32,6 +32,10 @@ export default function Home() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerDate, setCustomerDate] = useState("");
   const [isOnline, setIsOnline] = useState(false);
+  
+  useEffect(() => {
+    setCustomerDate(new Date().toISOString().split('T')[0]);
+  }, []);
   
   // Current Item State
   const [product, setProduct] = useState(PRODUCTS[0]);
@@ -93,22 +97,55 @@ export default function Home() {
     const cameraEmoji = String.fromCodePoint(0x1F4F8);
     const sparkleEmoji = String.fromCodePoint(0x2728);
     
+    // Generate Invoice ID
+    const year = new Date().getFullYear();
+    const randomChars = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const invoiceId = `INV-${year}-${randomChars}`;
+    
+    // Construct WhatsApp text
     let text = `*New Order from Golden Retail* ${cameraEmoji}\n\n`;
-    text += `*Customer:* ${customerName || 'Walk-in'} (${customerPhone || 'N/A'})\n`;
+    text += `*Invoice ID:* ${invoiceId}\n`;
+    text += `*Customer:* ${customerName || 'Walk-in'}\n`;
+    text += `*Mobile:* ${customerPhone || 'N/A'}\n`;
     text += `*Staff:* ${staffName}\n`;
     if (customerDate) text += `*Date:* ${customerDate}\n`;
+    
     text += `\n*Items:*\n`;
     cart.forEach((item, i) => {
-      text += `${i+1}. ${item.product} - ₹${item.amount}\n`;
+      text += `${i+1}. *${item.product}* - *₹${item.amount}*\n`;
       if (item.details) text += `   └ Details: ${item.details}\n`;
+      if (item.deliveryDate) text += `   └ Delivery Date: ${item.deliveryDate}\n`;
       if (item.idNumber) text += `   └ ID: ${item.idNumber}\n`;
-      if (item.deliveryDate) text += `   └ Delivery: ${item.deliveryDate}\n`;
     });
-    text += `\n*Total Amount:* ₹${cartTotal.toLocaleString()}\n`;
-    text += `*Payment Status:* ${amountStatus}\n`;
-    text += `*Payment Mode:* ${paymentMode}\n`;
+    
+    text += `\n*Payment Status:* ${amountStatus}\n`;
+    text += `*Total Amount:* ₹${cartTotal.toLocaleString()}\n`;
+    text += `*Delivery Status:* ${deliveryStatus}\n`;
     if (notes) text += `*Notes:* ${notes}\n`;
-    text += `\nThank you for choosing Golden Retail! ${sparkleEmoji}`;
+    text += `\nThank you for choosing us! ${sparkleEmoji}`;
+    
+    // Save to LocalStorage
+    try {
+      const stored = localStorage.getItem("golden_orders");
+      const orders = stored ? JSON.parse(stored) : [];
+      const newOrder = {
+        id: invoiceId,
+        customer: customerName || "Walk-in",
+        phone: customerPhone || "",
+        source: isOnline ? "ONLINE" : "OFFLINE",
+        total: cartTotal,
+        status: amountStatus === "Pending" ? "Unpaid" : (amountStatus === "Completed" ? "Paid" : "Partial"),
+        product: cart.map(c => c.product).join(', '),
+        date: customerDate,
+        paymentMode: amountStatus === "Pending" ? "N/A" : paymentMode,
+        deliveryStatus: deliveryStatus,
+        details: cart.map(c => c.details).join(', '),
+        idNumber: cart[0]?.idNumber || ""
+      };
+      localStorage.setItem("golden_orders", JSON.stringify([newOrder, ...orders]));
+    } catch (e) {
+      console.error(e);
+    }
     
     const encodedMessage = encodeURIComponent(text);
     window.open(`https://api.whatsapp.com/send/?phone=91${target}&text=${encodedMessage}`, "_blank");
@@ -117,7 +154,7 @@ export default function Home() {
     setCart([]);
     setCustomerName("");
     setCustomerPhone("");
-    setCustomerDate("");
+    setCustomerDate(new Date().toISOString().split('T')[0]);
     setAmountPaid("");
     setNotes("");
   };
@@ -314,25 +351,14 @@ export default function Home() {
         <div className="w-full lg:w-[400px] flex flex-col gap-6">
           
           {/* Status Pills */}
-          <div className="flex justify-end gap-3 hidden lg:flex items-center">
-            <button 
-              onClick={() => setIsOnline(false)}
-              className={cn("px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all border shadow-sm", 
-                !isOnline ? "bg-brand-gold text-white border-brand-gold" : "bg-white text-dark-500 border-gold-200 hover:border-brand-gold/50"
-              )}
-            >
-              {!isOnline && <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>}
-              Offline POS
-            </button>
-            <button 
-              onClick={() => setIsOnline(true)}
-              className={cn("px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all border shadow-sm", 
-                isOnline ? "bg-green-500 text-white border-green-500" : "bg-white text-dark-500 border-gold-200 hover:border-brand-gold/50"
-              )}
-            >
-              {isOnline && <span className="w-2 h-2 rounded-full bg-white"></span>}
-              Online Web
-            </button>
+          <div className="flex justify-end hidden lg:flex">
+            <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gold-200 cursor-pointer hover:border-brand-gold/50 transition-colors" onClick={() => setIsOnline(!isOnline)}>
+              <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors", !isOnline ? "text-brand-gold" : "text-dark-400")}>Offline</span>
+              <div className={cn("w-12 h-6 rounded-full p-0.5 transition-colors relative", isOnline ? 'bg-green-500' : 'bg-brand-gold')}>
+                <div className={cn("w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5 shadow-sm", isOnline ? 'translate-x-6' : 'translate-x-0')}></div>
+              </div>
+              <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors", isOnline ? "text-green-500" : "text-dark-400")}>Online</span>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gold-200 flex flex-col sticky top-6">
@@ -424,9 +450,19 @@ export default function Home() {
                     <select 
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value)}
-                      className="w-full bg-gold-50 border border-gold-200 rounded-lg px-2.5 py-2 outline-none focus:border-brand-gold focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-wider"
+                      disabled={amountStatus === "Pending"}
+                      className={cn(
+                        "w-full rounded-lg px-2.5 py-2 outline-none text-xs font-bold uppercase tracking-wider transition-all",
+                        amountStatus === "Pending" 
+                          ? "bg-dark-100 border border-dark-200 text-dark-400 cursor-not-allowed opacity-60" 
+                          : "bg-gold-50 border border-gold-200 focus:border-brand-gold focus:bg-white text-dark-900"
+                      )}
                     >
-                      {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+                      {amountStatus === "Pending" ? (
+                        <option value="N/A">N/A</option>
+                      ) : (
+                        PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)
+                      )}
                     </select>
                   </div>
                   <div className="col-span-2">
