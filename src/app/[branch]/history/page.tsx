@@ -2,7 +2,7 @@
 
 import { SidebarLayout } from "@/components/SidebarLayout";
 import { Search, Calendar, Download, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -10,7 +10,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const ORDERS = [
+const INITIAL_ORDERS = [
   { id: "INV-2026-4NPIP", customer: "Chakra", phone: "7538985660", source: "OFFLINE", total: 538, status: "Paid", product: "Portrait", date: "2026-07-08", paymentMode: "Cash", deliveryStatus: "Delivered", details: "1 Frame, 8x10", idNumber: "" },
   { id: "INV-2026-6OFIH", customer: "Madhavan", phone: "9790591365", source: "OFFLINE", total: 1500, status: "Unpaid", product: "Passport", date: "2026-07-07", paymentMode: "GPay", deliveryStatus: "Pending", details: "32 Copies", idNumber: "Z983948" },
   { id: "INV-2026-KKTVU", customer: "Madhavan", phone: "9790591365", source: "OFFLINE", total: 1800, status: "Partial", product: "Photo Shoot", date: "2026-07-06", paymentMode: "Card", deliveryStatus: "In Progress", details: "Pre-wedding shoot", idNumber: "" },
@@ -19,13 +19,27 @@ const ORDERS = [
   { id: "INV-2026-1LV83", customer: "John", phone: "9884408727", source: "ONLINE", total: 800, status: "Unpaid", product: "Print", date: "2026-07-05", paymentMode: "Others", deliveryStatus: "Pending", details: "10 A4 Prints", idNumber: "" },
 ];
 
+
 export default function HistoryPage() {
+  const [orders, setOrders] = useState<typeof INITIAL_ORDERS>(INITIAL_ORDERS);
   const [period, setPeriod] = useState("ALL TIME");
   const [globalSearch, setGlobalSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL STATUS");
-  const [selectedOrder, setSelectedOrder] = useState<typeof ORDERS[0] | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<typeof INITIAL_ORDERS[0] | null>(null);
 
-  const filteredOrders = ORDERS.filter(order => {
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("golden_orders");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setOrders([...parsed, ...INITIAL_ORDERS]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.id.toLowerCase().includes(globalSearch.toLowerCase()) ||
       order.customer.toLowerCase().includes(globalSearch.toLowerCase()) ||
@@ -39,7 +53,7 @@ export default function HistoryPage() {
 
   return (
     <SidebarLayout>
-      <div className="flex flex-col gap-6 h-full pb-10">
+      <div className="flex flex-col gap-4 sm:gap-5">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -112,7 +126,7 @@ export default function HistoryPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gold-200 overflow-hidden flex-1 flex flex-col">
+        <div className="bg-white rounded-2xl shadow-sm border border-gold-200 overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
