@@ -272,7 +272,6 @@ export default function HistoryPage() {
                   }}
                   className="text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
                 />
-                <Calendar size={14} className="text-brand-gold" />
 
                 <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-2">To</span>
                 <input 
@@ -284,7 +283,6 @@ export default function HistoryPage() {
                   }}
                   className="text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
                 />
-                <Calendar size={14} className="text-brand-gold" />
               </div>
 
               {/* Period Buttons */}

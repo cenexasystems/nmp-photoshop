@@ -162,14 +162,70 @@ export default function AnalyticsPage() {
   const todayOfflineRev = todayCompleted.filter(o => o.source === "OFFLINE").reduce((a, b) => a + b.total, 0);
   const todayOnlineRev = todayCompleted.filter(o => o.source === "ONLINE").reduce((a, b) => a + b.total, 0);
 
-  // Calculations for Revenue Tab
+  // Calculations for Revenue Tab (Dynamic based on period filter)
   const completedOrders = useMemo(() => dateFilteredOrders.filter(o => o.status === "Paid"), [dateFilteredOrders]);
   const totalRevenue = useMemo(() => completedOrders.reduce((a, b) => a + b.total, 0), [completedOrders]);
   const offlineBillsRev = useMemo(() => completedOrders.filter(o => o.source === "OFFLINE").reduce((a, b) => a + b.total, 0), [completedOrders]);
   const onlineBillsRev = useMemo(() => completedOrders.filter(o => o.source === "ONLINE").reduce((a, b) => a + b.total, 0), [completedOrders]);
   const totalOfflineCount = useMemo(() => completedOrders.filter(o => o.source === "OFFLINE").length, [completedOrders]);
   const totalOnlineCount = useMemo(() => completedOrders.filter(o => o.source === "ONLINE").length, [completedOrders]);
-  const avgOrderVal = completedOrders.length > 0 ? Math.round(totalRevenue / completedOrders.length) : 0;
+  
+  const totalItemsSold = useMemo(() => {
+    return completedOrders.reduce((acc, o) => {
+      const match = o.details?.match(/(\d+)\s*pcs/i) || o.details?.match(/(\d+)\s*Copies/i);
+      return acc + (match ? parseInt(match[1], 10) : 1);
+    }, 0);
+  }, [completedOrders]);
+
+  const avgOrderVal = completedOrders.length > 0 ? Math.round((totalRevenue / completedOrders.length) * 100) / 100 : 0;
+
+  // Dynamic Order Source Ratio
+  const totalOrdersCount = totalOfflineCount + totalOnlineCount || 1;
+  const offlinePct = Math.round((totalOfflineCount / totalOrdersCount) * 100);
+  const onlinePct = Math.round((totalOnlineCount / totalOrdersCount) * 100);
+
+  // Dynamic Top Items calculation based on dateFilteredOrders
+  const dynamicTopItems = useMemo(() => {
+    const defaultList = [
+      { rank: 1, name: "Kala Namak Rice", rev: "₹2,400", qty: "3 pcs", pct: "90%" },
+      { rank: 2, name: "Sample 1", rev: "₹1,000", qty: "1 pcs", pct: "40%" },
+      { rank: 3, name: "Munthiri (Cashew...", rev: "₹468", qty: "2 pcs", pct: "20%" },
+    ];
+
+    if (completedOrders.length === 0) return defaultList;
+
+    const map: Record<string, { rev: number; qty: number }> = {};
+    completedOrders.forEach(o => {
+      const prods = o.product.split(",").map(p => p.trim());
+      const shareVal = o.total / (prods.length || 1);
+      const match = o.details?.match(/(\d+)\s*pcs/i) || o.details?.match(/(\d+)\s*Copies/i);
+      const pcs = match ? parseInt(match[1], 10) : 1;
+      prods.forEach(p => {
+        if (!map[p]) map[p] = { rev: 0, qty: 0 };
+        map[p].rev += shareVal;
+        map[p].qty += pcs;
+      });
+    });
+
+    const list = Object.entries(map).map(([name, data]) => ({
+      name,
+      rev: data.rev,
+      qty: data.qty
+    }));
+
+    if (list.length === 0) return defaultList;
+
+    list.sort((a, b) => b.rev - a.rev);
+    const maxRev = list[0]?.rev || 1;
+
+    return list.slice(0, 5).map((item, index) => ({
+      rank: index + 1,
+      name: item.name,
+      rev: `₹${Math.round(item.rev).toLocaleString()}`,
+      qty: `${item.qty} pcs`,
+      pct: `${Math.min(100, Math.max(15, Math.round((item.rev / maxRev) * 100)))}%`
+    }));
+  }, [completedOrders]);
 
   // Product Leaderboard Calculations
   const productLeaderboard = useMemo(() => {
@@ -315,7 +371,6 @@ export default function AnalyticsPage() {
               }}
               className="text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
             />
-            <Calendar size={14} className="text-brand-gold ml-1" />
 
             <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-2">To</span>
             <input 
@@ -327,7 +382,6 @@ export default function AnalyticsPage() {
               }}
               className="text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
             />
-            <Calendar size={14} className="text-brand-gold ml-1" />
           </div>
         </div>
 
@@ -363,7 +417,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-dark-900">₹15,370.58</div>
+                  <div className="text-2xl font-black text-dark-900">₹{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">POS + manual combined</div>
                 </div>
               </div>
@@ -376,7 +430,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-dark-900">8</div>
+                  <div className="text-2xl font-black text-dark-900">{completedOrders.length}</div>
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">POS + manual bills</div>
                 </div>
               </div>
@@ -389,7 +443,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-dark-900">₹14,530.58</div>
+                  <div className="text-2xl font-black text-dark-900">₹{offlineBillsRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Walk-in POS sales</div>
                 </div>
               </div>
@@ -402,7 +456,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-dark-900">₹840.00</div>
+                  <div className="text-2xl font-black text-dark-900">₹{onlineBillsRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Online POS sales</div>
                 </div>
               </div>
@@ -415,7 +469,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xl font-black text-dark-900">7</div>
+                  <div className="text-xl font-black text-dark-900">{totalOfflineCount}</div>
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Walk-in orders</div>
                 </div>
               </div>
@@ -428,7 +482,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xl font-black text-dark-900">1</div>
+                  <div className="text-xl font-black text-dark-900">{totalOnlineCount}</div>
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Online channel</div>
                 </div>
               </div>
@@ -441,7 +495,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xl font-black text-dark-900">11 pcs</div>
+                  <div className="text-xl font-black text-dark-900">{totalItemsSold} pcs</div>
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">From completed bills</div>
                 </div>
               </div>
@@ -454,7 +508,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xl font-black text-dark-900">₹1,921.32</div>
+                  <div className="text-xl font-black text-dark-900">₹{avgOrderVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Per completed order</div>
                 </div>
               </div>
@@ -484,15 +538,19 @@ export default function AnalyticsPage() {
                   <div className="h-56 flex items-end justify-between gap-2 px-2 pb-2">
                     {["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"].map((m) => {
                       const isJuly = m === "JUL";
+                      const monthRevenue = isJuly ? "₹15,370.58" : "₹0.00";
                       return (
-                        <div key={m} className="flex flex-col items-center gap-3 flex-1 h-full justify-end">
+                        <div key={m} className="flex flex-col items-center gap-3 flex-1 h-full justify-end group/bar relative">
+                          <div className="absolute -top-10 opacity-0 group-hover/bar:opacity-100 transition-opacity bg-dark-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md pointer-events-none z-20 whitespace-nowrap">
+                            {m}: {monthRevenue}
+                          </div>
                           {isJuly ? (
-                            <div className="flex flex-col items-center w-full max-w-[36px]">
+                            <div className="flex flex-col items-center w-full max-w-[36px]" title={`JUL: ${monthRevenue}`}>
                               <span className="text-[10px] font-bold text-red-700 mb-1">Max</span>
-                              <div className="w-full bg-[#800020] hover:bg-red-900 transition-colors rounded-t-md h-40"></div>
+                              <div className="w-full bg-[#800020] hover:bg-red-900 transition-colors rounded-t-md h-40 cursor-pointer"></div>
                             </div>
                           ) : (
-                            <div className="w-full max-w-[36px] bg-red-100/60 rounded-full h-3"></div>
+                            <div className="w-full max-w-[36px] bg-red-100/60 hover:bg-red-300 transition-colors rounded-full h-3 cursor-pointer" title={`${m}: ${monthRevenue}`}></div>
                           )}
                           <span className="text-[9px] font-bold text-dark-500 uppercase tracking-widest">{m}</span>
                         </div>
@@ -515,12 +573,16 @@ export default function AnalyticsPage() {
                   <div className="h-32 flex items-end justify-between gap-3 px-2 pb-2">
                     {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((day) => {
                       const isThu = day === "THU";
+                      const dayRevenue = isThu ? "₹15,370.58" : "₹0.00";
                       return (
-                        <div key={day} className="flex flex-col items-center gap-2 flex-1 justify-end h-full">
+                        <div key={day} className="flex flex-col items-center gap-2 flex-1 justify-end h-full group/day relative">
+                          <div className="absolute -top-9 opacity-0 group-hover/day:opacity-100 transition-opacity bg-dark-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md pointer-events-none z-20 whitespace-nowrap">
+                            {day}: {dayRevenue}
+                          </div>
                           {isThu ? (
-                            <div className="w-full max-w-[32px] bg-[#800020] rounded-t-md h-12"></div>
+                            <div className="w-full max-w-[32px] bg-[#800020] hover:bg-red-900 transition-colors rounded-t-md h-12 cursor-pointer" title={`THU: ${dayRevenue}`}></div>
                           ) : (
-                            <div className="w-full max-w-[32px] bg-amber-100/60 rounded-full h-3"></div>
+                            <div className="w-full max-w-[32px] bg-amber-100/60 hover:bg-amber-300 transition-colors rounded-full h-3 cursor-pointer" title={`${day}: ${dayRevenue}`}></div>
                           )}
                           <span className="text-[9px] font-bold text-dark-500 uppercase tracking-widest">{day}</span>
                         </div>
@@ -541,20 +603,20 @@ export default function AnalyticsPage() {
                     <div>
                       <div className="flex justify-between items-center mb-1 text-xs font-bold">
                         <span className="text-red-600 uppercase tracking-widest text-[10px]">OFFLINE</span>
-                        <span className="text-dark-900">7</span>
+                        <span className="text-dark-900">{totalOfflineCount}</span>
                       </div>
                       <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
-                        <div className="h-full bg-red-600 rounded-full" style={{ width: '87.5%' }}></div>
+                        <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: `${offlinePct}%` }}></div>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between items-center mb-1 text-xs font-bold">
                         <span className="text-emerald-600 uppercase tracking-widest text-[10px]">ONLINE</span>
-                        <span className="text-dark-900">1</span>
+                        <span className="text-dark-900">{totalOnlineCount}</span>
                       </div>
                       <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: '12.5%' }}></div>
+                        <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${onlinePct}%` }}></div>
                       </div>
                     </div>
                   </div>
@@ -564,27 +626,29 @@ export default function AnalyticsPage() {
                 <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
                   <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-5">TOP ITEMS BY REVENUE</h3>
                   <div className="space-y-5">
-                    {[
-                      { rank: 1, name: "Kala Namak Rice", rev: "₹2,400", qty: "3 pcs", pct: "90%" },
-                      { rank: 2, name: "Sample 1", rev: "₹1,000", qty: "1 pcs", pct: "40%" },
-                      { rank: 3, name: "Munthiri (Cashew...", rev: "₹468", qty: "2 pcs", pct: "20%" },
-                    ].map((item) => (
-                      <div key={item.rank} className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-dark-400">{item.rank}</span>
-                            <span className="font-bold text-dark-900 uppercase">{item.name}</span>
+                    {dynamicTopItems.length > 0 ? (
+                      dynamicTopItems.map((item) => (
+                        <div key={item.rank} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-dark-400">{item.rank}</span>
+                              <span className="font-bold text-dark-900 uppercase">{item.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-dark-900">{item.rev}</span>
+                              <span className="text-[10px] font-semibold text-dark-400">{item.qty}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-dark-900">{item.rev}</span>
-                            <span className="text-[10px] font-semibold text-dark-400">{item.qty}</span>
+                          <div className="h-1 w-full bg-gold-50 rounded-full overflow-hidden">
+                            <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: item.pct }}></div>
                           </div>
                         </div>
-                        <div className="h-1 w-full bg-gold-50 rounded-full overflow-hidden">
-                          <div className="h-full bg-red-600 rounded-full" style={{ width: item.pct }}></div>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="py-6 text-center text-xs text-dark-400 font-medium italic">
+                        No orders recorded for selected period.
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
 

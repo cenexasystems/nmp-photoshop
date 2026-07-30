@@ -156,7 +156,7 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
 
           <footer className="mt-8 pt-4 pb-2 border-t border-gold-200 text-[10px] font-bold text-dark-500 flex flex-col sm:flex-row items-center justify-between gap-2 px-2 max-w-7xl mx-auto w-full">
             <div>© 2026 NMG Photo Shop. All Rights Reserved</div>
-            <div>Powered by <span className="text-dark-900 font-extrabold">Cenexa Systems</span> © 2026</div>
+            <div>Powered by <a href="https://www.cenexasystems.com" target="_blank" rel="noopener noreferrer" className="text-dark-900 font-extrabold hover:text-brand-gold hover:underline transition-colors">Cenexa Systems</a> © 2026</div>
             <div className="uppercase tracking-widest text-brand-gold">NMG PHOTO SHOP</div>
           </footer>
         </div>
