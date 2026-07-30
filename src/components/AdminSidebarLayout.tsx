@@ -56,13 +56,13 @@ export function AdminSidebarLayout({ children }: { children: ReactNode }) {
           isCollapsed && !isMobileOpen ? "justify-center" : "justify-between"
         )}>
           <div className={cn("flex items-center gap-3 transition-all", isCollapsed && !isMobileOpen ? "justify-center w-full" : "")}>
-            <div className="w-8 h-8 rounded-lg bg-brand-gold flex shrink-0 items-center justify-center font-bold text-white text-sm tracking-tighter shadow-sm">
-              GR
+            <div className="w-8 h-8 rounded-lg bg-brand-gold flex shrink-0 items-center justify-center font-bold text-white text-xs tracking-tight shadow-sm">
+              NMG
             </div>
             {(!isCollapsed || isMobileOpen) && (
               <div>
-                <h1 className="font-bold text-lg tracking-widest uppercase text-dark-900 whitespace-nowrap">Admin Portal</h1>
-                <p className="text-[9px] font-bold text-red-600 uppercase tracking-widest mt-0.5">Secure Area</p>
+                <h1 className="font-bold text-base tracking-wider uppercase text-dark-900 whitespace-nowrap">NMG Photo Shop</h1>
+                <p className="text-[9px] font-bold text-red-600 uppercase tracking-widest mt-0.5">Admin Portal</p>
               </div>
             )}
           </div>
@@ -140,19 +140,25 @@ export function AdminSidebarLayout({ children }: { children: ReactNode }) {
         <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-gold-200 z-30">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-brand-gold text-white flex items-center justify-center font-bold text-xs shadow-sm">
-              GR
+              NMG
             </div>
-            <span className="font-bold tracking-widest uppercase text-sm text-dark-900">Golden</span>
+            <span className="font-bold tracking-widest uppercase text-sm text-dark-900">NMG Photo Shop</span>
           </div>
           <button onClick={() => setIsMobileOpen(true)} className="p-2 text-dark-800 bg-gold-50 rounded-lg">
             <Menu size={24} strokeWidth={2} />
           </button>
         </div>
         
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 flex flex-col justify-between">
+          <div className="max-w-7xl mx-auto w-full">
             {children}
           </div>
+
+          <footer className="mt-8 pt-4 pb-2 border-t border-gold-200 text-[10px] font-bold text-dark-500 flex flex-col sm:flex-row items-center justify-between gap-2 px-2 max-w-7xl mx-auto w-full">
+            <div>© 2026 NMG Photo Shop. All Rights Reserved</div>
+            <div>Powered by <span className="text-dark-900 font-extrabold">Cenexa Systems</span> © 2026</div>
+            <div className="uppercase tracking-widest text-brand-gold">NMG PHOTO SHOP</div>
+          </footer>
         </div>
       </main>
     </div>
