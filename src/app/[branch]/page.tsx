@@ -3,6 +3,8 @@
 import { SidebarLayout } from "@/components/SidebarLayout";
 import { User, Trash2, Plus, CreditCard, Camera } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -23,10 +25,12 @@ interface CartItem {
   amount: number;
   idNumber?: string;
   deliveryDate?: string;
-  costToMake?: number;
 }
 
 export default function Home() {
+  const params = useParams();
+  const branchId = params.branch as string;
+
   // Global Order State
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -43,7 +47,6 @@ export default function Home() {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [details, setDetails] = useState("");
   const [amount, setAmount] = useState("");
-  const [costToMake, setCostToMake] = useState("");
   
   // Order Level Settings
   const [staffName, setStaffName] = useState(STAFF_MEMBERS[0]);
@@ -52,6 +55,7 @@ export default function Home() {
   const [deliveryStatus, setDeliveryStatus] = useState(DELIVERY_STATUSES[0]);
   const [amountPaid, setAmountPaid] = useState("");
   const [notes, setNotes] = useState("");
+  const [discountPercent, setDiscountPercent] = useState("");
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -72,10 +76,6 @@ export default function Home() {
     if (product === "Passport") newItem.idNumber = idNumber;
     if (product === "Frame") newItem.deliveryDate = deliveryDate;
 
-    if (product === "Frame" || product === "Print" || product === "Gift") {
-      newItem.costToMake = parseFloat(costToMake) || 0;
-    }
-
     setCart([...cart, newItem]);
     
     // Reset item form
@@ -83,7 +83,6 @@ export default function Home() {
     setAmount("");
     setIdNumber("");
     setDeliveryDate("");
-    setCostToMake("");
   };
 
   const removeFromCart = (id: number) => {
@@ -91,8 +90,10 @@ export default function Home() {
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.amount, 0);
+  const discountAmt = cartTotal * (parseFloat(discountPercent) || 0) / 100;
+  const finalTotal = Math.max(0, cartTotal - discountAmt);
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
     const target = customerPhone.length === 10 ? customerPhone : "7904199050";
     const cameraEmoji = String.fromCodePoint(0x1F4F8);
     const sparkleEmoji = String.fromCodePoint(0x2728);
@@ -119,32 +120,82 @@ export default function Home() {
     });
     
     text += `\n*Payment Status:* ${amountStatus}\n`;
-    text += `*Total Amount:* ₹${cartTotal.toLocaleString()}\n`;
+    if (discountPercent && parseFloat(discountPercent) > 0) {
+      text += `*Subtotal:* ₹${cartTotal.toLocaleString()}\n`;
+      text += `*Discount:* ${discountPercent}% (-₹${discountAmt.toLocaleString()})\n`;
+    }
+    text += `*Total Amount:* ₹${finalTotal.toLocaleString()}\n`;
     text += `*Delivery Status:* ${deliveryStatus}\n`;
     if (notes) text += `*Notes:* ${notes}\n`;
+    
+    const invoiceUrl = `${window.location.origin}/invoice/${invoiceId}`;
+    text += `\n*View Invoice:* ${invoiceUrl}\n`;
     text += `\nThank you for choosing us! ${sparkleEmoji}`;
     
-    // Save to LocalStorage
+    // Save to Supabase
     try {
-      const stored = localStorage.getItem("golden_orders");
-      const orders = stored ? JSON.parse(stored) : [];
+      let customerId = null;
+      if (customerPhone) {
+        const { data: existingCustomer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('phone', customerPhone)
+          .eq('branch_id', branchId)
+          .maybeSingle();
+          
+        if (existingCustomer) {
+          customerId = existingCustomer.id;
+        } else {
+          const { data: newCustomer } = await supabase
+            .from('customers')
+            .insert({
+              name: customerName || "Walk-in",
+              phone: customerPhone,
+              branch_id: branchId
+            })
+            .select('id')
+            .single();
+          if (newCustomer) customerId = newCustomer.id;
+        }
+      }
+
       const newOrder = {
         id: invoiceId,
-        customer: customerName || "Walk-in",
-        phone: customerPhone || "",
-        source: isOnline ? "ONLINE" : "OFFLINE",
-        total: cartTotal,
-        status: amountStatus === "Pending" ? "Unpaid" : (amountStatus === "Completed" ? "Paid" : "Partial"),
-        product: cart.map(c => c.product).join(', '),
+        branch_id: branchId,
+        customer_id: customerId,
+        customer_name: customerName || "Walk-in",
+        customer_phone: customerPhone || "",
         date: customerDate,
-        paymentMode: amountStatus === "Pending" ? "N/A" : paymentMode,
-        deliveryStatus: deliveryStatus,
-        details: cart.map(c => c.details).join(', '),
-        idNumber: cart[0]?.idNumber || ""
+        staff_name: staffName,
+        source: isOnline ? "ONLINE" : "OFFLINE",
+        total: finalTotal,
+        amount_paid: amountStatus === "Completed" ? finalTotal : (amountStatus === "Partial" ? parseFloat(amountPaid) : 0),
+        payment_status: amountStatus === "Pending" ? "Unpaid" : (amountStatus === "Completed" ? "Paid" : "Partial"),
+        payment_mode: amountStatus === "Pending" ? "N/A" : paymentMode,
+        delivery_status: deliveryStatus,
+        discount: discountAmt,
+        notes: notes
       };
-      localStorage.setItem("golden_orders", JSON.stringify([newOrder, ...orders]));
+      
+      const { error: orderError } = await supabase.from('orders').insert(newOrder);
+      if (orderError) throw orderError;
+
+      const orderItems = cart.map(item => ({
+        order_id: invoiceId,
+        product: item.product,
+        details: item.details,
+        amount: item.amount,
+        cost_to_make: 0,
+        id_number: item.idNumber || null,
+        delivery_date: item.deliveryDate || null
+      }));
+      
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+      if (itemsError) throw itemsError;
+
     } catch (e) {
-      console.error(e);
+      console.error("Supabase Save Error:", e);
+      alert("Failed to save to database. Please check console.");
     }
     
     const encodedMessage = encodeURIComponent(text);
@@ -157,6 +208,7 @@ export default function Home() {
     setCustomerDate(new Date().toISOString().split('T')[0]);
     setAmountPaid("");
     setNotes("");
+    setDiscountPercent("");
   };
   
   return (
@@ -247,22 +299,15 @@ export default function Home() {
                 {/* Product Type */}
                 <div className="col-span-1 md:col-span-2">
                   <label className="block text-[10px] font-bold text-dark-500 mb-3 uppercase tracking-widest">Select Product</label>
-                  <div className="flex flex-wrap gap-2">
+                  <select
+                    value={product}
+                    onChange={(e) => setProduct(e.target.value)}
+                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-bold text-dark-900 uppercase tracking-wider"
+                  >
                     {PRODUCTS.map(p => (
-                      <button
-                        key={p}
-                        onClick={() => setProduct(p)}
-                        className={cn(
-                          "px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all border",
-                          product === p 
-                            ? "bg-brand-gold text-white border-brand-gold shadow-sm" 
-                            : "bg-white text-dark-600 border-gold-200 hover:border-brand-gold/50 hover:bg-gold-50"
-                        )}
-                      >
-                        {p}
-                      </button>
+                      <option key={p} value={p}>{p}</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 {/* Conditional Passport ID */}
@@ -315,22 +360,6 @@ export default function Home() {
                     className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-bold text-dark-900"
                   />
                 </div>
-
-                {/* Conditional Cost to Make */}
-                {(product === "Frame" || product === "Gift" || product === "Print") ? (
-                  <div className="col-span-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Cost to Make (Expense ₹)</label>
-                    <input 
-                      type="number" 
-                      value={costToMake}
-                      onChange={(e) => setCostToMake(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 outline-none focus:border-red-400 focus:bg-white transition-all text-sm font-semibold text-red-900"
-                    />
-                  </div>
-                ) : (
-                  <div className="col-span-1"></div>
-                )}
 
                 <div className="col-span-1 md:col-span-2 flex justify-end">
                   <button 
@@ -423,8 +452,9 @@ export default function Home() {
                       value={amountStatus}
                       onChange={(e) => {
                         setAmountStatus(e.target.value);
-                        if (e.target.value === "Completed") setAmountPaid(cartTotal.toString());
-                        else if (e.target.value === "Pending") setAmountPaid("0");
+                        // Update amountPaid when status changes  
+              if (e.target.value === "Completed") setAmountPaid(finalTotal.toString());
+              else if (e.target.value === "Pending") setAmountPaid("0");
                       }}
                       className="w-full bg-gold-50 border border-gold-200 rounded-lg px-2.5 py-2 outline-none focus:border-brand-gold focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-wider"
                     >
@@ -491,15 +521,39 @@ export default function Home() {
             </div>
             
             <div className="p-6 bg-gold-50/80 rounded-b-2xl border-t border-gold-200">
+              {/* Discount input */}
+              <div className="flex items-center gap-2 mb-4">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest whitespace-nowrap">Discount %</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={discountPercent}
+                  onChange={(e) => setDiscountPercent(e.target.value)}
+                  placeholder="0"
+                  className="w-20 bg-white border border-gold-200 focus:border-brand-gold rounded-lg px-2.5 py-1.5 text-xs font-bold text-dark-900 outline-none transition-colors text-center"
+                />
+                {discountAmt > 0 && (
+                  <span className="text-xs font-bold text-red-500 ml-auto">-₹{discountAmt.toLocaleString()}</span>
+                )}
+              </div>
+
+              {discountAmt > 0 && (
+                <div className="flex justify-between items-center text-xs mb-1">
+                  <span className="text-dark-400 font-bold uppercase tracking-widest">Subtotal</span>
+                  <span className="font-bold text-dark-600 line-through">₹{cartTotal.toLocaleString()}</span>
+                </div>
+              )}
+
               <div className="flex justify-between items-end mb-2">
                 <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Grand Total</span>
-                <span className="text-3xl font-black text-dark-900">₹{cartTotal.toLocaleString()}</span>
+                <span className="text-3xl font-black text-dark-900">₹{finalTotal.toLocaleString()}</span>
               </div>
               
               {amountStatus === "Partial" && (
                 <div className="flex justify-between items-end mb-5 pt-3 border-t border-gold-200/60">
                   <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Remaining Balance</span>
-                  <span className="text-lg font-black text-red-600">₹{(cartTotal - (parseFloat(amountPaid) || 0)).toLocaleString()}</span>
+                  <span className="text-lg font-black text-red-600">₹{(finalTotal - (parseFloat(amountPaid) || 0)).toLocaleString()}</span>
                 </div>
               )}
               {amountStatus !== "Partial" && <div className="mb-5"></div>}

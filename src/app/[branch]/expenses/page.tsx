@@ -1,8 +1,8 @@
 "use client";
 
-import { AdminSidebarLayout } from "@/components/AdminSidebarLayout";
-import { Wallet } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { SidebarLayout } from "@/components/SidebarLayout";
+import { Wallet, Search } from "lucide-react";
+import { useState, useEffect, useMemo, use } from "react";
 import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -23,14 +23,15 @@ const CATEGORIES = [
   "Other"
 ];
 
-export default function ExpensesPage() {
-  const [date, setDate] = useState("2026-07-08");
+export default function BranchExpensesPage({ params }: { params: Promise<{ branch: string }> }) {
+  const { branch } = use(params);
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [notes, setNotes] = useState("");
-  const [period, setPeriod] = useState("Today");
   const [orderNo, setOrderNo] = useState("");
+  const [period, setPeriod] = useState("Today");
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -38,6 +39,7 @@ export default function ExpensesPage() {
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
+      .eq('branch_id', branch)
       .order('date', { ascending: false });
     
     if (data && !error) {
@@ -47,7 +49,7 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     loadExpenses();
-  }, []);
+  }, [branch]);
 
   const handleSave = async () => {
     if (!amount) return alert("Please enter an amount");
@@ -79,7 +81,7 @@ export default function ExpensesPage() {
     }
 
     const { error } = await supabase.from('expenses').insert({
-      branch_id: 'chennai-main', // Defaulting since Admin selects branch globally or we assume Chennai for demo
+      branch_id: branch,
       date,
       category,
       amount: parseFloat(amount),
@@ -88,7 +90,7 @@ export default function ExpensesPage() {
     });
 
     if (error) {
-      alert("Failed to save expense");
+      alert("Failed to save expense. Make sure RLS is disabled or you have permissions.");
     } else {
       setAmount("");
       setNotes("");
@@ -102,7 +104,6 @@ export default function ExpensesPage() {
     const today = new Date().toISOString().split('T')[0];
     return expenses.filter(e => {
       if (period === "Today") return e.date === today;
-      // Add logic for other periods if needed
       return true; 
     });
   }, [expenses, period]);
@@ -110,7 +111,7 @@ export default function ExpensesPage() {
   const total = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
   return (
-    <AdminSidebarLayout>
+    <SidebarLayout>
       <div className="flex flex-col gap-6 h-full pb-10">
         
         {/* Header Section */}
@@ -118,9 +119,9 @@ export default function ExpensesPage() {
           <div>
             <h2 className="text-2xl font-bold text-dark-900 flex items-center gap-2">
               <span className="w-1.5 h-6 bg-brand-gold rounded-full inline-block"></span>
-              Expenses
+              Branch Expenses
             </h2>
-            <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Log day-to-day studio spending</p>
+            <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Log day-to-day spending and order-specific costs</p>
           </div>
         </div>
 
@@ -160,13 +161,16 @@ export default function ExpensesPage() {
               {category === "ORDER" && (
                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                   <label className="block text-[10px] font-bold text-brand-gold mb-1.5 uppercase tracking-widest">Order No</label>
-                  <input 
-                    type="text" 
-                    value={orderNo}
-                    onChange={(e) => setOrderNo(e.target.value)}
-                    placeholder="e.g. INV-2026-XXXX"
-                    className="w-full bg-brand-gold/10 border border-brand-gold/50 focus:border-brand-gold focus:bg-white rounded-xl px-4 py-2.5 outline-none transition-colors text-sm font-black text-dark-900 uppercase"
-                  />
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-400" size={16} />
+                    <input 
+                      type="text" 
+                      value={orderNo}
+                      onChange={(e) => setOrderNo(e.target.value)}
+                      placeholder="e.g. INV-2026-XXXX"
+                      className="w-full bg-brand-gold/10 border border-brand-gold/50 focus:border-brand-gold focus:bg-white rounded-xl pl-9 pr-4 py-2.5 outline-none transition-colors text-sm font-black text-dark-900 uppercase"
+                    />
+                  </div>
                   <p className="text-[9px] text-dark-500 mt-1.5 ml-1 font-medium italic">* We will verify this ID in the database before saving.</p>
                 </div>
               )}
@@ -226,9 +230,7 @@ export default function ExpensesPage() {
                 className="bg-white border border-gold-200 rounded-full px-4 py-2 outline-none focus:border-brand-gold text-[10px] font-bold text-dark-900 uppercase tracking-widest shadow-sm"
               >
                 <option>Today</option>
-                <option>Yesterday</option>
-                <option>This Week</option>
-                <option>This Month</option>
+                <option>All Time</option>
               </select>
 
               <div className="bg-white border border-gold-200 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-sm">
@@ -272,6 +274,6 @@ export default function ExpensesPage() {
         </div>
 
       </div>
-    </AdminSidebarLayout>
+    </SidebarLayout>
   );
 }

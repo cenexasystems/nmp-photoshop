@@ -1,8 +1,10 @@
 "use client";
 
 import { SidebarLayout } from "@/components/SidebarLayout";
-import { Search, Calendar, Download, X, Lock, CheckCircle2 } from "lucide-react";
+import { Search, Calendar, Download, X, Lock, CheckCircle2, CreditCard, Banknote } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
+import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -16,6 +18,7 @@ export interface Order {
   phone: string;
   source: string;
   total: number;
+  amountPaid: number;
   status: string; // "Paid", "Unpaid", "Partial", "Pending"
   product: string;
   date: string; // YYYY-MM-DD
@@ -25,15 +28,6 @@ export interface Order {
   idNumber: string;
   statusLocked?: boolean;
 }
-
-const INITIAL_ORDERS: Order[] = [
-  { id: "INV-2026-4NPIP", customer: "Chakra", phone: "7538985660", source: "OFFLINE", total: 538, status: "Paid", product: "Portrait", date: "2026-07-30", paymentMode: "Cash", deliveryStatus: "Delivered", details: "1 Frame, 8x10", idNumber: "", statusLocked: true },
-  { id: "INV-2026-6OFIH", customer: "Madhavan", phone: "9790591365", source: "OFFLINE", total: 1500, status: "Unpaid", product: "Passport", date: "2026-07-29", paymentMode: "GPay", deliveryStatus: "Pending", details: "32 Copies", idNumber: "Z983948", statusLocked: false },
-  { id: "INV-2026-KKTVU", customer: "Madhavan", phone: "9790591365", source: "OFFLINE", total: 1800, status: "Partial", product: "Photo Shoot", date: "2026-07-28", paymentMode: "Card", deliveryStatus: "In Progress", details: "Pre-wedding shoot", idNumber: "", statusLocked: false },
-  { id: "INV-2026-KDTGV", customer: "Madhava", phone: "9790591365", source: "OFFLINE", total: 1500, status: "Paid", product: "Frame", date: "2026-07-20", paymentMode: "Cash", deliveryStatus: "Delivered", details: "Large Wooden Frame", idNumber: "", statusLocked: true },
-  { id: "INV-2026-OQZ22", customer: "Kupu", phone: "6009705582", source: "OFFLINE", total: 3900, status: "Paid", product: "Gift", date: "2026-07-15", paymentMode: "Bank Transfer", deliveryStatus: "Delivered", details: "Custom Mug", idNumber: "", statusLocked: true },
-  { id: "INV-2026-1LV83", customer: "John", phone: "9884408727", source: "ONLINE", total: 800, status: "Unpaid", product: "Print", date: "2026-06-25", paymentMode: "Others", deliveryStatus: "Pending", details: "10 A4 Prints", idNumber: "", statusLocked: false },
-];
 
 function getTodayString(): string {
   const d = new Date();
@@ -86,43 +80,85 @@ function getThisYearRange(): { start: string; end: string } {
 }
 
 export default function HistoryPage() {
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const params = useParams();
+  const branchId = params.branch as string;
+  const [orders, setOrders] = useState<Order[]>([]);
   const [period, setPeriod] = useState<string>("ALL TIME");
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
   const [globalSearch, setGlobalSearch] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL STATUS");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderExpenses, setOrderExpenses] = useState<any[]>([]);
+  const [orderPayments, setOrderPayments] = useState<any[]>([]);
   const [updateFeedback, setUpdateFeedback] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Record Payment state
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMode, setPaymentMode] = useState("Cash");
+  const [recordingPayment, setRecordingPayment] = useState(false);
+  const [paymentFeedback, setPaymentFeedback] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const storedAll = localStorage.getItem("golden_orders_all");
-      if (storedAll) {
-        setOrders(JSON.parse(storedAll));
-        return;
-      }
-      const stored = localStorage.getItem("golden_orders");
-      if (stored) {
-        const parsed: Order[] = JSON.parse(stored);
-        const storedIds = new Set(parsed.map(o => o.id));
-        const filteredInitial = INITIAL_ORDERS.filter(o => !storedIds.has(o.id));
-        setOrders([...parsed, ...filteredInitial]);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
+    async function fetchOrders() {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .eq('branch_id', branchId)
+        .order('date', { ascending: false });
 
-  const saveOrdersState = (updatedList: Order[]) => {
-    setOrders(updatedList);
-    try {
-      localStorage.setItem("golden_orders_all", JSON.stringify(updatedList));
-      localStorage.setItem("golden_orders", JSON.stringify(updatedList));
-    } catch (e) {
-      console.error("Error saving orders", e);
+      if (data && !error) {
+        const mappedOrders: Order[] = data.map((o: any) => ({
+          id: o.id,
+          customer: o.customer_name || 'Walk-in',
+          phone: o.customer_phone || '',
+          source: o.source,
+          total: o.total,
+          amountPaid: o.amount_paid || 0,
+          status: o.payment_status,
+          product: o.order_items?.map((i: any) => i.product).join(', ') || '',
+          date: o.date,
+          paymentMode: o.payment_mode,
+          deliveryStatus: o.delivery_status,
+          details: o.order_items?.map((i: any) => i.details).join(', ') || '',
+          idNumber: o.order_items?.[0]?.id_number || '',
+          statusLocked: o.status_locked
+        }));
+        setOrders(mappedOrders);
+      }
+      setLoading(false);
     }
-  };
+    fetchOrders();
+  }, [branchId]);
+
+  useEffect(() => {
+    async function fetchOrderDetails() {
+      if (selectedOrder) {
+        // Fetch expenses
+        const { data: expData } = await supabase
+          .from('expenses')
+          .select('*')
+          .ilike('notes', `%Order ID: ${selectedOrder.id}%`);
+        setOrderExpenses(expData || []);
+
+        // Fetch payment history
+        const { data: payData } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('order_id', selectedOrder.id)
+          .order('recorded_at', { ascending: true });
+        setOrderPayments(payData || []);
+      } else {
+        setOrderExpenses([]);
+        setOrderPayments([]);
+      }
+    }
+    fetchOrderDetails();
+  }, [selectedOrder]);
 
   const handlePeriodChange = (newPeriod: string) => {
     setPeriod(newPeriod);
@@ -148,19 +184,30 @@ export default function HistoryPage() {
     }
   };
 
-  const handleStatusUpdate = (orderId: string, newStatus: string) => {
+  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ payment_status: newStatus, status_locked: true })
+      .eq('id', orderId);
+
+    if (error) {
+      console.error("Failed to update status:", error);
+      alert("Failed to update status.");
+      return;
+    }
+
     const updated = orders.map((o) => {
       if (o.id === orderId) {
         return {
           ...o,
           status: newStatus,
-          statusLocked: true, // One-time selection enforced
+          statusLocked: true,
         };
       }
       return o;
     });
 
-    saveOrdersState(updated);
+    setOrders(updated);
 
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({
@@ -172,6 +219,71 @@ export default function HistoryPage() {
 
     setUpdateFeedback(`Order ${orderId} updated to ${newStatus} & locked.`);
     setTimeout(() => setUpdateFeedback(null), 3500);
+  };
+
+  const handleRecordPayment = async () => {
+    if (!selectedOrder || !paymentAmount) return;
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) return;
+
+    const restToPay = selectedOrder.total - selectedOrder.amountPaid;
+    if (amount > restToPay) {
+      alert(`Amount cannot exceed the remaining balance of ₹${restToPay.toLocaleString()}`);
+      return;
+    }
+
+    setRecordingPayment(true);
+    const newAmountPaid = selectedOrder.amountPaid + amount;
+    const newStatus = newAmountPaid >= selectedOrder.total ? "Paid" : "Partial";
+    const statusLocked = newStatus === "Paid";
+
+    // Determine payment_mode: if there are prior payments with different method, mark as Mixed
+    const existingModes = orderPayments.map(p => p.payment_mode);
+    const allModes = [...new Set([...existingModes, paymentMode])];
+    const finalMode = allModes.length > 1 ? "Mixed" : paymentMode;
+
+    // Insert into payments ledger
+    const { error: payError } = await supabase
+      .from('payments')
+      .insert({ order_id: selectedOrder.id, amount, payment_mode: paymentMode });
+
+    if (payError) {
+      alert("Failed to record payment.");
+      setRecordingPayment(false);
+      return;
+    }
+
+    // Update the order totals
+    const { error: orderError } = await supabase
+      .from('orders')
+      .update({
+        amount_paid: newAmountPaid,
+        payment_status: newStatus,
+        payment_mode: finalMode,
+        status_locked: statusLocked
+      })
+      .eq('id', selectedOrder.id);
+
+    if (orderError) {
+      alert("Failed to update order.");
+    } else {
+      const newPaymentEntry = { id: Date.now(), order_id: selectedOrder.id, amount, payment_mode: paymentMode, recorded_at: new Date().toISOString() };
+      setOrderPayments([...orderPayments, newPaymentEntry]);
+
+      const updatedOrder = {
+        ...selectedOrder,
+        amountPaid: newAmountPaid,
+        status: newStatus,
+        paymentMode: finalMode,
+        statusLocked
+      };
+      setSelectedOrder(updatedOrder);
+      setOrders(orders.map(o => o.id === selectedOrder.id ? updatedOrder : o));
+      setPaymentAmount("");
+      setPaymentFeedback(`✓ ₹${amount.toLocaleString()} via ${paymentMode} recorded`);
+      setTimeout(() => setPaymentFeedback(null), 4000);
+    }
+    setRecordingPayment(false);
   };
 
   const handleExportCSV = () => {
@@ -477,7 +589,7 @@ export default function HistoryPage() {
               </div>
 
               <div className="bg-gold-50 rounded-xl p-4 border border-gold-100">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Product</div>
                     <div className="font-bold text-brand-gold uppercase text-sm">{selectedOrder.product}</div>
@@ -486,18 +598,39 @@ export default function HistoryPage() {
                     <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Total Amount</div>
                     <div className="font-black text-dark-900 text-lg">₹{selectedOrder.total.toLocaleString()}</div>
                   </div>
-                  <div className="col-span-2">
+                  <div>
+                    <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Rest to Pay</div>
+                    <div className="font-black text-red-600 text-lg">₹{(selectedOrder.total - selectedOrder.amountPaid).toLocaleString()}</div>
+                  </div>
+                  <div className="col-span-2 md:col-span-3">
                     <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Details</div>
                     <div className="font-medium text-dark-900 text-sm">{selectedOrder.details || "-"}</div>
                   </div>
                   {selectedOrder.idNumber && (
-                    <div className="col-span-2 pt-1">
+                    <div className="col-span-2 md:col-span-3 pt-1">
                       <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">ID Number</div>
                       <div className="font-bold text-dark-900 text-sm">{selectedOrder.idNumber}</div>
                     </div>
                   )}
                 </div>
               </div>
+
+              {orderExpenses.length > 0 && (
+                <div className="pt-2 border-t border-gold-100">
+                  <div className="text-[10px] font-bold text-brand-gold uppercase tracking-widest mb-2">Order Expenses</div>
+                  <div className="space-y-2">
+                    {orderExpenses.map((exp: any) => (
+                      <div key={exp.id} className="flex justify-between items-center text-sm p-3 bg-red-50/50 rounded-lg border border-red-100">
+                        <div>
+                          <div className="font-bold text-dark-900">{exp.category}</div>
+                          <div className="text-xs text-dark-500">{exp.date} • {exp.payment_mode}</div>
+                        </div>
+                        <div className="font-black text-red-600">-₹{exp.amount}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
@@ -529,6 +662,72 @@ export default function HistoryPage() {
                   <div className="font-bold text-dark-900 text-xs uppercase">{selectedOrder.deliveryStatus}</div>
                 </div>
               </div>
+
+              {/* Record Payment Panel - only if not fully paid */}
+              {selectedOrder.status !== "Paid" && (
+                <div className="border-t border-gold-100 pt-4 space-y-3">
+                  <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest flex items-center gap-1.5">
+                    <Banknote size={14} />
+                    Payment Ledger
+                  </div>
+
+                  {/* Payment History */}
+                  {orderPayments.length > 0 && (
+                    <div className="space-y-1.5">
+                      {orderPayments.map((p: any) => (
+                        <div key={p.id} className="flex justify-between items-center text-xs bg-emerald-50/60 border border-emerald-100 rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-emerald-800 uppercase tracking-wider">{p.payment_mode}</span>
+                            <span className="text-dark-400">•</span>
+                            <span className="text-dark-500 font-medium">{new Date(p.recorded_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <span className="font-black text-emerald-700">+₹{parseFloat(p.amount).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {paymentFeedback && (
+                    <div className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                      {paymentFeedback}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold text-dark-500 mb-1 uppercase tracking-widest">Amount (₹)</label>
+                      <input
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder={`Max ₹${(selectedOrder.total - selectedOrder.amountPaid).toLocaleString()}`}
+                        className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold rounded-lg px-3 py-2 text-sm font-bold text-dark-900 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-dark-500 mb-1 uppercase tracking-widest">Method</label>
+                      <select
+                        value={paymentMode}
+                        onChange={(e) => setPaymentMode(e.target.value)}
+                        className="bg-gold-50 border border-gold-200 focus:border-brand-gold rounded-lg px-3 py-2 text-xs font-bold text-dark-900 outline-none transition-colors uppercase"
+                      >
+                        <option value="Cash">Cash</option>
+                        <option value="GPay">GPay</option>
+                        <option value="Card">Card</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleRecordPayment}
+                      disabled={recordingPayment || !paymentAmount}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+                    >
+                      <CreditCard size={13} />
+                      {recordingPayment ? "Saving..." : "Record"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>

@@ -16,6 +16,7 @@ import {
   Search 
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -39,15 +40,6 @@ export interface Order {
   discount?: number;
 }
 
-const DEFAULT_ORDERS: Order[] = [
-  { id: "INV-2026-0IUVZHP", customer: "A", phone: "7538985660", source: "OFFLINE", total: 166, status: "Paid", product: "Passport Copies", date: "2026-07-30", paymentMode: "Cash", deliveryStatus: "Delivered", details: "32 Copies", idNumber: "", discount: 74 },
-  { id: "INV-2026-GAJAKW2", customer: "D Mirudull", phone: "9790591365", source: "OFFLINE", total: 100, status: "Paid", product: "Print", date: "2026-07-30", paymentMode: "GPay", deliveryStatus: "Delivered", details: "A4 Glossy", idNumber: "", discount: 20 },
-  { id: "INV-2026-TP8Y1GU", customer: "D Mirudull", phone: "9790591365", source: "OFFLINE", total: 425.88, status: "Paid", product: "Kala Namak Rice", date: "2026-07-28", paymentMode: "Card", deliveryStatus: "Delivered", details: "3 pcs", idNumber: "", discount: 42.12 },
-  { id: "INV-2026-TOKLS2B", customer: "D Mirudull", phone: "9790591365", source: "OFFLINE", total: 156.5, status: "Paid", product: "Munthiri (Cashews)", date: "2026-07-20", paymentMode: "Cash", deliveryStatus: "Delivered", details: "2 pcs", idNumber: "", discount: 128.5 },
-  { id: "INV-2026-5AY13M7", customer: "D Mirudull", phone: "6009705582", source: "OFFLINE", total: 1500, status: "Paid", product: "Sample 1", date: "2026-07-15", paymentMode: "Bank Transfer", deliveryStatus: "Delivered", details: "1 pcs", idNumber: "", discount: 100 },
-  { id: "INV-2026-B6SR4XM", customer: "D Mirudull", phone: "9884408727", source: "ONLINE", total: 840, status: "Paid", product: "Thengai Ennai (Coconut Oil)", date: "2026-06-25", paymentMode: "Others", deliveryStatus: "Delivered", details: "2 pcs", idNumber: "", discount: 160 },
-];
-
 function getISOWeekNumber(d: Date): number {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = date.getUTCDay() || 7;
@@ -65,7 +57,7 @@ function getTodayString(): string {
 }
 
 export default function AnalyticsPage() {
-  const [orders, setOrders] = useState<Order[]>(DEFAULT_ORDERS);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [period, setPeriod] = useState("All Time");
   const [tab, setTab] = useState("TODAY'S SALES");
   const [fromDate, setFromDate] = useState("");
@@ -79,15 +71,34 @@ export default function AnalyticsPage() {
   const currentWeekNum = useMemo(() => getISOWeekNumber(new Date()), []);
   const todayStr = useMemo(() => getTodayString(), []);
 
-  const loadData = () => {
-    try {
-      const stored = localStorage.getItem("golden_orders_all") || localStorage.getItem("golden_orders");
-      if (stored) {
-        const parsed: Order[] = JSON.parse(stored);
-        setOrders([...parsed, ...DEFAULT_ORDERS.filter(d => !parsed.some(p => p.id === d.id))]);
-      }
-    } catch (e) {
-      console.error(e);
+  const loadData = async () => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (*)
+      `)
+      .order('date', { ascending: false });
+
+    if (data && !error) {
+      const mappedOrders: Order[] = data.map((o: any) => ({
+        id: o.id,
+        customer: o.customer_name || 'Walk-in',
+        phone: o.customer_phone || '',
+        source: o.source,
+        total: o.total,
+        status: o.payment_status,
+        product: o.order_items?.map((i: any) => i.product).join(', ') || '',
+        date: o.date,
+        paymentMode: o.payment_mode,
+        deliveryStatus: o.delivery_status,
+        details: o.order_items?.map((i: any) => i.details).join(', ') || '',
+        idNumber: o.order_items?.[0]?.id_number || '',
+        discount: o.discount || 0
+      }));
+      setOrders(mappedOrders);
+    } else {
+      console.error("Failed to load analytics data:", error);
     }
   };
 

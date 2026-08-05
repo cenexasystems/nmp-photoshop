@@ -2,25 +2,36 @@
 
 import { SidebarLayout } from "@/components/SidebarLayout";
 import { Search, UserPlus } from "lucide-react";
-import { useState } from "react";
-
-const CUSTOMERS = [
-  { name: "Chakra", phone: "7538985660" },
-  { name: "Madhavan", phone: "9790591365" },
-  { name: "Madhava", phone: "9790591365" },
-  { name: "Kupu", phone: "6009705582" },
-  { name: "John", phone: "9884408727" },
-  { name: "Mohan kumar", phone: "6588272206" },
-  { name: "Rajasekhar", phone: "9994665784" },
-  { name: "Ramday", phone: "7824858523" },
-];
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function CustomersPage() {
+  const params = useParams();
+  const branchId = params.branch as string;
   const [searchTerm, setSearchTerm] = useState("");
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredCustomers = CUSTOMERS.filter(c => 
+  useEffect(() => {
+    async function fetchCustomers() {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('branch_id', branchId)
+        .order('last_order_date', { ascending: false, nullsFirst: false });
+        
+      if (!error && data) {
+        setCustomers(data);
+      }
+      setLoading(false);
+    }
+    fetchCustomers();
+  }, [branchId]);
+
+  const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.phone.includes(searchTerm)
+    (c.phone && c.phone.includes(searchTerm))
   );
 
   return (
@@ -61,14 +72,23 @@ export default function CustomersPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gold-200 overflow-hidden flex-1 flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead>
+              <thead className="sticky top-0 bg-white z-10">
                 <tr className="bg-gold-50/50 border-b border-gold-200">
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Name</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Phone Number</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest text-center">Orders</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest text-right">Total Spent</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest text-right">Last Order</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gold-100">
-                {filteredCustomers.length > 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-dark-400 font-bold text-[10px] tracking-widest uppercase">
+                      Loading customers...
+                    </td>
+                  </tr>
+                ) : filteredCustomers.length > 0 ? (
                   filteredCustomers.map((customer, i) => (
                     <tr key={i} className="hover:bg-gold-50/30 transition-colors">
                       <td className="px-6 py-4">
@@ -77,11 +97,20 @@ export default function CustomersPage() {
                       <td className="px-6 py-4">
                         <span className="text-sm font-bold text-dark-600 tracking-widest">{customer.phone}</span>
                       </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="text-xs font-bold bg-gold-100 text-brand-gold px-2.5 py-1 rounded-full">{customer.total_orders} Orders</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-sm font-black text-dark-900">₹{parseFloat(customer.total_spent || 0).toLocaleString()}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-xs font-medium text-dark-500">{customer.last_order_date || 'Never'}</span>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={2} className="px-6 py-12 text-center text-dark-400 font-bold text-[10px] tracking-widest uppercase">
+                    <td colSpan={5} className="px-6 py-12 text-center text-dark-400 font-bold text-[10px] tracking-widest uppercase">
                       No customers found.
                     </td>
                   </tr>

@@ -30,6 +30,7 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
   const NAV_ITEMS = [
     { href: `/${branch}`, label: "BILLING", icon: Calculator },
     { href: `/${branch}/history`, label: "ORDERS", icon: History },
+    { href: `/${branch}/expenses`, label: "EXPENSES", icon: Wallet },
   ];
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);

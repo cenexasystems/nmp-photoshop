@@ -5,6 +5,7 @@ import { Search, ChevronLeft, ChevronRight, Phone, User, Calendar, ShoppingBag, 
 import { useState, useEffect, useMemo } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { supabase } from "@/lib/supabase";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,39 +35,42 @@ interface CustomerGroup {
   orders: OrderItem[];
 }
 
-const DUMMY_CUSTOMER_ORDERS: OrderItem[] = [
-  { id: "INV-2026-4NPIP", customer: "Chakra", phone: "7538985660", source: "OFFLINE", total: 538, status: "Paid", product: "Portrait", date: "2026-07-08", paymentMode: "Cash", deliveryStatus: "Delivered", details: "1 Frame, 8x10", idNumber: "" },
-  { id: "INV-2026-6OFIH", customer: "Madhavan", phone: "9790591365", source: "OFFLINE", total: 1500, status: "Unpaid", product: "Passport", date: "2026-07-07", paymentMode: "N/A", deliveryStatus: "Pending", details: "32 Copies", idNumber: "Z983948" },
-  { id: "INV-2026-KKTVU", customer: "Madhavan", phone: "9790591365", source: "OFFLINE", total: 1800, status: "Partial", product: "Photo Shoot", date: "2026-07-06", paymentMode: "Card", deliveryStatus: "In Progress", details: "Pre-wedding shoot", idNumber: "" },
-  { id: "INV-2026-KDTGV", customer: "Madhavan", phone: "9790591365", source: "OFFLINE", total: 1500, status: "Paid", product: "Frame", date: "2026-07-06", paymentMode: "Cash", deliveryStatus: "Delivered", details: "Large Wooden Frame 18x24", idNumber: "" },
-  { id: "INV-2026-OQZ22", customer: "Kupu", phone: "6009705582", source: "OFFLINE", total: 3900, status: "Paid", product: "Gift", date: "2026-07-05", paymentMode: "Bank Transfer", deliveryStatus: "Delivered", details: "Custom Mug & Photo Lamp", idNumber: "" },
-  { id: "INV-2026-1LV83", customer: "John", phone: "9884408727", source: "ONLINE", total: 800, status: "Unpaid", product: "Print", date: "2026-07-05", paymentMode: "N/A", deliveryStatus: "Pending", details: "10 A4 Matte Prints", idNumber: "" },
-  { id: "INV-2026-98XAL", customer: "Priya Ramesh", phone: "9445123890", source: "OFFLINE", total: 2400, status: "Paid", product: "Photo Shoot", date: "2026-07-04", paymentMode: "GPay", deliveryStatus: "Delivered", details: "Baby Portfolio Shoot", idNumber: "" },
-  { id: "INV-2026-2MOP9", customer: "Anand Kumar", phone: "9840192834", source: "ONLINE", total: 650, status: "Paid", product: "Passport", date: "2026-07-04", paymentMode: "Card", deliveryStatus: "Delivered", details: "16 Visa Prints", idNumber: "V129845" },
-  { id: "INV-2026-789KL", customer: "Suresh Babu", phone: "9003182736", source: "OFFLINE", total: 4200, status: "Partial", product: "Frame", date: "2026-07-03", paymentMode: "Cash", deliveryStatus: "In Progress", details: "Canvas Wall Frame 24x36", idNumber: "" },
-  { id: "INV-2026-341OP", customer: "Deepa Lakshmi", phone: "9841098234", source: "OFFLINE", total: 1100, status: "Paid", product: "Print", date: "2026-07-02", paymentMode: "GPay", deliveryStatus: "Delivered", details: "Enlargement Prints x 5", idNumber: "" },
-  { id: "INV-2026-552TR", customer: "Karthik Raj", phone: "9791029384", source: "ONLINE", total: 3100, status: "Paid", product: "Gift", date: "2026-07-01", paymentMode: "Card", deliveryStatus: "Delivered", details: "Custom Photo Pillow & Album", idNumber: "" },
-  { id: "INV-2026-881QW", customer: "Meena Swaminathan", phone: "9176029384", source: "OFFLINE", total: 750, status: "Unpaid", product: "Portrait", date: "2026-06-30", paymentMode: "N/A", deliveryStatus: "Pending", details: "Studio Portrait", idNumber: "" }
-];
-
 const ITEMS_PER_PAGE = 5;
 
 export default function CustomerOrdersPage() {
-  const [allOrders, setAllOrders] = useState<OrderItem[]>(DUMMY_CUSTOMER_ORDERS);
+  const [allOrders, setAllOrders] = useState<OrderItem[]>([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCustomerGroup, setSelectedCustomerGroup] = useState<CustomerGroup | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("golden_orders");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setAllOrders([...parsed, ...DUMMY_CUSTOMER_ORDERS]);
+    async function loadOrders() {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`*, order_items (*)`)
+        .order('date', { ascending: false });
+
+      if (data && !error) {
+        const mappedOrders: OrderItem[] = data.map((o: any) => ({
+          id: o.id,
+          customer: o.customer_name || 'Walk-in',
+          phone: o.customer_phone || '',
+          source: o.source,
+          total: o.total,
+          status: o.payment_status,
+          product: o.order_items?.map((i: any) => i.product).join(', ') || '',
+          date: o.date,
+          paymentMode: o.payment_mode,
+          deliveryStatus: o.delivery_status,
+          details: o.order_items?.map((i: any) => i.details).join(', ') || '',
+          idNumber: o.order_items?.[0]?.id_number || ''
+        }));
+        setAllOrders(mappedOrders);
       }
-    } catch (e) {
-      console.error(e);
+      setLoading(false);
     }
+    loadOrders();
   }, []);
 
   // Group raw orders by Customer Phone & Name
