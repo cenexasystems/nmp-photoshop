@@ -2,12 +2,13 @@
 
 import { useEffect, useState, use } from "react";
 import { supabase } from "@/lib/supabase";
-import { ShoppingBag, MapPin, Phone, Printer, Copy, Check } from "lucide-react";
+import { ShoppingBag, MapPin, Phone, Printer, Copy, Check, Camera, CreditCard } from "lucide-react";
 import Link from "next/link";
 
 export default function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [order, setOrder] = useState<any>(null);
+  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -32,7 +33,16 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         setError(true);
       } else {
         setOrder(data);
-        document.title = `Invoice - ${data.id}`;
+        document.title = `Invoice ${data.id} - NMJ Photoshop`;
+
+        // Fetch payment ledger history
+        const { data: payData } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('order_id', data.id)
+          .order('recorded_at', { ascending: true });
+        
+        setPayments(payData || []);
       }
       setLoading(false);
     };
@@ -45,7 +55,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
       <div className="min-h-screen bg-gold-50 flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-12 h-12 bg-dark-900 rounded-full flex items-center justify-center">
-            <ShoppingBag className="w-6 h-6 text-brand-gold" />
+            <Camera className="w-6 h-6 text-brand-gold" />
           </div>
           <p className="text-dark-600 font-bold tracking-widest uppercase text-sm">Generating Digital Bill...</p>
         </div>
@@ -72,6 +82,8 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
   const totalAmount = order.total || 0;
   const subtotal = totalAmount + discountAmount;
   const items = order.order_items || [];
+  const amountPaid = order.amount_paid || 0;
+  const restToPay = Math.max(0, totalAmount - amountPaid);
 
   return (
     <div className="min-h-screen bg-gold-50 text-dark-900 font-sans py-12 px-4 print:p-0 print:bg-white flex flex-col items-center">
@@ -91,7 +103,13 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
       `}</style>
       
       {/* Top Navigation / Action Bar (Hidden when printing) */}
-      <div className="w-full max-w-3xl flex justify-end items-center mb-8 print:hidden gap-4">
+      <div className="w-full max-w-3xl flex justify-between items-center mb-8 print:hidden">
+        <Link 
+          href="/" 
+          className="text-xs font-bold text-dark-600 hover:text-dark-900 uppercase tracking-widest flex items-center gap-1"
+        >
+          ← Back to Store
+        </Link>
         <div className="flex items-center gap-3">
           <button 
             onClick={handleCopyLink}
@@ -121,17 +139,18 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         
         {/* Header Section */}
         <div className="bg-gold-50/30 border-b border-gold-200 p-8 sm:p-12 print:p-4 flex flex-col items-center text-center">
-          <h1 className="text-3xl font-black text-dark-900 tracking-tight">Golden Studio</h1>
-          <p className="text-xs text-dark-500 font-bold tracking-wider mt-1 mb-4">INVOICE: {order.id}</p>
+          <div className="w-12 h-12 bg-dark-900 rounded-full flex items-center justify-center mb-3 border-2 border-brand-gold shadow-sm">
+            <Camera className="w-6 h-6 text-brand-gold" />
+          </div>
+          <h1 className="text-3xl font-black text-dark-900 tracking-tight">NMJ Photoshop</h1>
+          <p className="text-xs text-dark-500 font-bold tracking-wider mt-1 mb-4">INVOICE #{order.id}</p>
           
-          <div className="flex flex-col items-center gap-2 text-sm text-dark-600 font-semibold">
-            <div className="text-center w-full leading-relaxed">
-              <span className="inline-block text-brand-gold mr-1.5 align-middle -mt-0.5">
-                <MapPin className="w-3.5 h-3.5" />
-              </span>
-              <span>Branch: {order.branch_id.replace('-', ' ').toUpperCase()}</span>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-dark-600 font-semibold">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+              <span>Branch: {order.branch_id ? order.branch_id.replace('-', ' ').toUpperCase() : 'CHENNAI MAIN'}</span>
             </div>
-            <div className="flex items-center gap-1.5 justify-center">
+            <div className="flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5 text-brand-gold shrink-0" />
               <span>+91 99999 99999</span>
             </div>
@@ -146,24 +165,31 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
             {order.customer_phone && (
               <p className="text-sm text-dark-600 font-semibold mt-1">+91 {order.customer_phone}</p>
             )}
+            {order.source && (
+              <span className="inline-block mt-2 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-gold-100 text-dark-800">
+                Source: {order.source}
+              </span>
+            )}
           </div>
           <div className="sm:text-right flex flex-col sm:items-end">
-            <h3 className="text-[10px] font-bold text-dark-400 uppercase tracking-[0.2em] mb-3 self-start sm:self-auto">Order Details</h3>
-            <div className="inline-block text-left text-sm">
-              <div className="flex flex-wrap gap-x-4 gap-y-1 justify-start sm:justify-end">
-                <div className="flex gap-1.5">
-                  <span className="text-dark-400 font-bold">Date:</span>
-                  <span className="text-dark-900 font-black">{new Date(order.date || order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                </div>
-                <div className="flex gap-1.5">
-                  <span className="text-dark-400 font-bold">Time:</span>
-                  <span className="text-dark-900 font-black">{new Date(order.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <div className="flex gap-1.5">
-                  <span className="text-dark-400 font-bold">Status:</span>
-                  <span className="text-dark-900 font-black uppercase">{order.payment_status || 'Unpaid'}</span>
-                </div>
+            <h3 className="text-[10px] font-bold text-dark-400 uppercase tracking-[0.2em] mb-3 self-start sm:self-auto">Order Info</h3>
+            <div className="space-y-1.5 text-xs text-left sm:text-right">
+              <div>
+                <span className="text-dark-400 font-bold">Billed Date: </span>
+                <span className="text-dark-900 font-black">{new Date(order.date || order.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
               </div>
+              <div>
+                <span className="text-dark-400 font-bold">Payment Status: </span>
+                <span className={`font-black uppercase ${order.payment_status === 'Paid' ? 'text-emerald-600' : order.payment_status === 'Partial' ? 'text-amber-600' : 'text-red-600'}`}>
+                  {order.payment_status || 'Unpaid'}
+                </span>
+              </div>
+              {order.delivery_status && (
+                <div>
+                  <span className="text-dark-400 font-bold">Delivery Status: </span>
+                  <span className="text-dark-900 font-black uppercase">{order.delivery_status}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -181,23 +207,46 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
               {items.map((item: any, index: number) => {
                 return (
                   <tr key={index} className="group">
-                    <td className="py-6 pr-4 print:py-3">
+                    <td className="py-5 pr-4 print:py-3">
                       <p className="text-sm font-bold text-dark-900">{item.product}</p>
                       {(item.details || item.id_number || item.delivery_date) && (
                         <div className="text-xs text-dark-500 mt-1 space-y-0.5 font-medium">
                           {item.details && <p>Details: {item.details}</p>}
                           {item.id_number && <p>ID: {item.id_number}</p>}
-                          {item.delivery_date && <p>Delivery: {item.delivery_date}</p>}
+                          {item.delivery_date && <p>Expected Delivery: {item.delivery_date}</p>}
                         </div>
                       )}
                     </td>
-                    <td className="py-6 pl-4 print:py-3 text-right text-sm font-black text-dark-900">₹{parseFloat(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    <td className="py-5 pl-4 print:py-3 text-right text-sm font-black text-dark-900">₹{parseFloat(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+
+        {/* Payment History Log Breakdown (if available) */}
+        {payments.length > 0 && (
+          <div className="mx-8 sm:mx-12 mb-6 p-4 bg-emerald-50/60 border border-emerald-100 rounded-xl print:mx-4">
+            <h4 className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+              <CreditCard size={13} />
+              Payment Installment Breakdown
+            </h4>
+            <div className="space-y-1.5">
+              {payments.map((p, idx) => (
+                <div key={p.id || idx} className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-dark-700">
+                    Payment #{idx + 1}: <span className="uppercase text-emerald-800">{p.payment_mode || 'Cash'}</span>
+                    <span className="text-dark-400 font-normal ml-2">
+                      ({new Date(p.recorded_at).toLocaleDateString('en-IN', { month: 'short', day: '2-digit' })})
+                    </span>
+                  </span>
+                  <span className="font-black text-emerald-700">₹{parseFloat(p.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Totals Section */}
         <div className="bg-gold-50/30 border-t border-gold-200 p-8 sm:p-12 print:p-4 flex justify-end">
@@ -219,24 +268,26 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
               )}
 
               <div className="border-t border-gold-200 pt-4 mt-2 flex justify-between items-center">
-                <span className="text-sm font-black text-dark-900 uppercase tracking-widest">Total Amount</span>
-                <span className="text-3xl font-black text-brand-gold drop-shadow-sm">₹{totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                <span className="text-sm font-black text-dark-900 uppercase tracking-widest">Grand Total</span>
+                <span className="text-2xl font-black text-brand-gold drop-shadow-sm">₹{totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
               </div>
               <div className="flex justify-between items-center text-sm pt-2">
                 <span className="text-dark-400 font-bold uppercase tracking-wider">Amount Paid</span>
-                <span className="font-bold text-dark-900">₹{(order.amount_paid || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                <span className="font-bold text-emerald-700">₹{amountPaid.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
               </div>
               <div className="flex justify-between items-center text-sm pt-1">
-                <span className="text-dark-400 font-bold uppercase tracking-wider">Rest to Pay</span>
-                <span className="font-bold text-red-600">₹{(totalAmount - (order.amount_paid || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                <span className="text-dark-400 font-bold uppercase tracking-wider">Balance Due</span>
+                <span className={`font-black ${restToPay > 0 ? 'text-red-600' : 'text-dark-400'}`}>
+                  ₹{restToPay.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                </span>
               </div>
             </div>
         </div>
         
         {/* Footer */}
         <div className="border-t border-gold-100 p-6 print:p-2 text-center bg-gold-50/30 flex flex-col items-center justify-center gap-1.5">
-          <p className="text-xs font-bold text-dark-900 tracking-wider uppercase">Thank you for choosing us!</p>
-          <p className="text-[9px] font-bold text-brand-gold uppercase tracking-[0.15em]">Golden Studio POS</p>
+          <p className="text-xs font-bold text-dark-900 tracking-wider uppercase">Thank you for choosing NMJ Photoshop!</p>
+          <p className="text-[9px] font-bold text-brand-gold uppercase tracking-[0.15em]">NMJ Photoshop POS</p>
         </div>
 
       </div>

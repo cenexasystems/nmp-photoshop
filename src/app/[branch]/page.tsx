@@ -236,143 +236,148 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Customer Details Card */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gold-200">
-            <h3 className="text-sm font-bold text-dark-900 mb-5 tracking-widest uppercase flex items-center gap-2">
-              <User className="text-brand-gold" size={18} />
-              Customer Info
-            </h3>
+          {/* Main Left Form Box */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gold-200 flex-1 flex flex-col gap-8">
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div>
-                <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Customer Name</label>
-                <input 
-                  type="text" 
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Enter name"
-                  className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Mobile Number</label>
-                <input 
-                  type="tel"
-                  maxLength={10}
-                  value={customerPhone}
-                  onChange={handlePhoneChange}
-                  placeholder="10-digit number"
-                  className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Date</label>
-                <input 
-                  type="date"
-                  value={customerDate}
-                  onChange={(e) => setCustomerDate(e.target.value)}
-                  className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Handled By (Staff)</label>
-                <select 
-                  value={staffName}
-                  onChange={(e) => setStaffName(e.target.value)}
-                  className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
-                >
-                  {STAFF_MEMBERS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Product Form Card */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gold-200 flex-1 flex flex-col">
-            <h3 className="text-sm font-bold text-dark-900 mb-6 tracking-widest uppercase flex items-center gap-2">
-              <Camera className="text-brand-gold" size={18} />
-              Add Product
-            </h3>
-
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Product Type */}
-                <div className="col-span-1 md:col-span-2">
-                  <label className="block text-[10px] font-bold text-dark-500 mb-3 uppercase tracking-widest">Select Product</label>
-                  <select
-                    value={product}
-                    onChange={(e) => setProduct(e.target.value)}
-                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-bold text-dark-900 uppercase tracking-wider"
-                  >
-                    {PRODUCTS.map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Conditional Passport ID */}
-                {product === "Passport" && (
-                  <div className="col-span-1 md:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">ID Number</label>
-                    <input 
-                      type="text" 
-                      value={idNumber}
-                      onChange={(e) => setIdNumber(e.target.value)}
-                      placeholder="Enter Passport ID"
-                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
-                    />
-                  </div>
-                )}
-
-                {/* Conditional Delivery Date for Frame */}
-                {product === "Frame" && (
-                  <div className="col-span-1 md:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Delivery Date</label>
-                    <input 
-                      type="date" 
-                      value={deliveryDate}
-                      onChange={(e) => setDeliveryDate(e.target.value)}
-                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
-                    />
-                  </div>
-                )}
-
-                {/* Details */}
-                <div className="col-span-1 md:col-span-2">
-                  <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Details / Description</label>
+            {/* Customer Details Section */}
+            <div>
+              <h3 className="text-sm font-bold text-dark-900 mb-5 tracking-widest uppercase flex items-center gap-2">
+                <User className="text-brand-gold" size={18} />
+                Customer Info
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Customer Name</label>
                   <input 
                     type="text" 
-                    value={details}
-                    onChange={(e) => setDetails(e.target.value)}
-                    placeholder="Enter details..."
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter name"
+                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Mobile Number</label>
+                  <input 
+                    type="tel"
+                    maxLength={10}
+                    value={customerPhone}
+                    onChange={handlePhoneChange}
+                    placeholder="10-digit number"
+                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Date</label>
+                  <input 
+                    type="date"
+                    value={customerDate}
+                    onChange={(e) => setCustomerDate(e.target.value)}
                     className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
                   />
                 </div>
-
-                {/* Amount */}
-                <div className="col-span-1">
-                  <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Amount Charged (₹)</label>
-                  <input 
-                    type="number" 
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-bold text-dark-900"
-                  />
-                </div>
-
-                <div className="col-span-1 md:col-span-2 flex justify-end">
-                  <button 
-                    onClick={addToCart}
-                    disabled={!amount}
-                    className="flex items-center gap-2 px-8 py-3 bg-dark-900 hover:bg-dark-800 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors disabled:opacity-50"
+                <div>
+                  <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Handled By (Staff)</label>
+                  <select 
+                    value={staffName}
+                    onChange={(e) => setStaffName(e.target.value)}
+                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
                   >
-                    <Plus size={16} strokeWidth={2.5} /> Add to Order
-                  </button>
+                    {STAFF_MEMBERS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
               </div>
             </div>
 
+            <div className="border-t border-gold-100"></div>
+
+            {/* Product Form Section */}
+            <div>
+              <h3 className="text-sm font-bold text-dark-900 mb-6 tracking-widest uppercase flex items-center gap-2">
+                <Camera className="text-brand-gold" size={18} />
+                Add Product
+              </h3>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* Product Type */}
+                  <div className="col-span-1 md:col-span-2">
+                    <label className="block text-[10px] font-bold text-dark-500 mb-3 uppercase tracking-widest">Select Product</label>
+                    <select
+                      value={product}
+                      onChange={(e) => setProduct(e.target.value)}
+                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-bold text-dark-900 uppercase tracking-wider"
+                    >
+                      {PRODUCTS.map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Conditional Passport ID */}
+                  {product === "Passport" && (
+                    <div className="col-span-1 md:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">ID Number</label>
+                      <input 
+                        type="text" 
+                        value={idNumber}
+                        onChange={(e) => setIdNumber(e.target.value)}
+                        placeholder="Enter Passport ID"
+                        className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
+                      />
+                    </div>
+                  )}
+
+                  {/* Conditional Delivery Date for Frame */}
+                  {product === "Frame" && (
+                    <div className="col-span-1 md:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Delivery Date</label>
+                      <input 
+                        type="date" 
+                        value={deliveryDate}
+                        onChange={(e) => setDeliveryDate(e.target.value)}
+                        className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
+                      />
+                    </div>
+                  )}
+
+                  {/* Details */}
+                  <div className="col-span-1 md:col-span-2">
+                    <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Details / Description</label>
+                    <input 
+                      type="text" 
+                      value={details}
+                      onChange={(e) => setDetails(e.target.value)}
+                      placeholder="Enter details..."
+                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
+                    />
+                  </div>
+
+                  {/* Amount */}
+                  <div className="col-span-1">
+                    <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Amount Charged (₹)</label>
+                    <input 
+                      type="number" 
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-bold text-dark-900"
+                    />
+                  </div>
+
+                  <div className="col-span-1 md:col-span-2 flex justify-end">
+                    <button 
+                      onClick={addToCart}
+                      disabled={!amount}
+                      className="flex items-center gap-2 px-8 py-3 bg-dark-900 hover:bg-dark-800 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors disabled:opacity-50"
+                    >
+                      <Plus size={16} strokeWidth={2.5} /> Add to Order
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
