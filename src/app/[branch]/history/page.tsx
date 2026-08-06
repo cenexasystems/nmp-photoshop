@@ -1,12 +1,13 @@
 "use client";
 
 import { SidebarLayout } from "@/components/SidebarLayout";
-import { Search, Calendar, Download, X, Lock, CheckCircle2, CreditCard, Banknote } from "lucide-react";
+import { Search, Download, X, Lock, CheckCircle2, CreditCard, Banknote, Truck, ExternalLink, Printer } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import Link from "next/link";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -23,7 +24,7 @@ export interface Order {
   product: string;
   date: string; // YYYY-MM-DD
   paymentMode: string;
-  deliveryStatus: string;
+  deliveryStatus: string; // "Pending", "Processing", "Ready", "Delivered"
   details: string;
   idNumber: string;
   statusLocked?: boolean;
@@ -39,7 +40,7 @@ function getTodayString(): string {
 
 function getThisWeekRange(): { start: string; end: string } {
   const now = new Date();
-  const day = now.getDay(); // 0 is Sunday, 1 is Monday... 6 is Saturday
+  const day = now.getDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
   
   const monday = new Date(now);
@@ -94,11 +95,11 @@ export default function HistoryPage() {
   const [updateFeedback, setUpdateFeedback] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Record Payment state
+  // Partial Payment Modal State
+  const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [recordingPayment, setRecordingPayment] = useState(false);
-  const [paymentFeedback, setPaymentFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchOrders() {
@@ -109,7 +110,7 @@ export default function HistoryPage() {
           order_items (*)
         `)
         .eq('branch_id', branchId)
-        .order('date', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (data && !error) {
         const mappedOrders: Order[] = data.map((o: any) => ({
@@ -119,11 +120,11 @@ export default function HistoryPage() {
           source: o.source,
           total: o.total,
           amountPaid: o.amount_paid || 0,
-          status: o.payment_status,
+          status: o.payment_status || 'Unpaid',
           product: o.order_items?.map((i: any) => i.product).join(', ') || '',
           date: o.date,
-          paymentMode: o.payment_mode,
-          deliveryStatus: o.delivery_status,
+          paymentMode: o.payment_mode || 'Cash',
+          deliveryStatus: o.delivery_status || 'Pending',
           details: o.order_items?.map((i: any) => i.details).join(', ') || '',
           idNumber: o.order_items?.[0]?.id_number || '',
           statusLocked: o.status_locked
@@ -184,15 +185,16 @@ export default function HistoryPage() {
     }
   };
 
-  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+  // Update Delivery Status
+  const handleDeliveryStatusUpdate = async (orderId: string, newDeliveryStatus: string) => {
     const { error } = await supabase
       .from('orders')
-      .update({ payment_status: newStatus, status_locked: true })
+      .update({ delivery_status: newDeliveryStatus })
       .eq('id', orderId);
 
     if (error) {
-      console.error("Failed to update status:", error);
-      alert("Failed to update status.");
+      console.error("Failed to update delivery status:", error);
+      alert("Failed to update delivery status.");
       return;
     }
 
@@ -200,8 +202,7 @@ export default function HistoryPage() {
       if (o.id === orderId) {
         return {
           ...o,
-          status: newStatus,
-          statusLocked: true,
+          deliveryStatus: newDeliveryStatus,
         };
       }
       return o;
@@ -212,48 +213,55 @@ export default function HistoryPage() {
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({
         ...selectedOrder,
-        status: newStatus,
-        statusLocked: true,
+        deliveryStatus: newDeliveryStatus,
       });
     }
 
-    setUpdateFeedback(`Order ${orderId} updated to ${newStatus} & locked.`);
+    setUpdateFeedback(`Order ${orderId} delivery status updated to "${newDeliveryStatus}".`);
     setTimeout(() => setUpdateFeedback(null), 3500);
   };
 
-  const handleRecordPayment = async () => {
-    if (!selectedOrder || !paymentAmount) return;
+  // Open Payment Prompt for Partial/Unpaid orders
+  const openPaymentModal = (order: Order) => {
+    setPaymentModalOrder(order);
+    const restToPay = order.total - order.amountPaid;
+    setPaymentAmount(restToPay.toString());
+    setPaymentMode("Cash");
+  };
+
+  // Submit Payment Record
+  const handleConfirmPayment = async () => {
+    if (!paymentModalOrder || !paymentAmount) return;
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount <= 0) return;
 
-    const restToPay = selectedOrder.total - selectedOrder.amountPaid;
+    const restToPay = paymentModalOrder.total - paymentModalOrder.amountPaid;
     if (amount > restToPay) {
       alert(`Amount cannot exceed the remaining balance of ₹${restToPay.toLocaleString()}`);
       return;
     }
 
     setRecordingPayment(true);
-    const newAmountPaid = selectedOrder.amountPaid + amount;
-    const newStatus = newAmountPaid >= selectedOrder.total ? "Paid" : "Partial";
+    const newAmountPaid = paymentModalOrder.amountPaid + amount;
+    const newStatus = newAmountPaid >= paymentModalOrder.total ? "Paid" : "Partial";
     const statusLocked = newStatus === "Paid";
 
-    // Determine payment_mode: if there are prior payments with different method, mark as Mixed
-    const existingModes = orderPayments.map(p => p.payment_mode);
+    // Determine payment mode
+    const { data: existingPayData } = await supabase
+      .from('payments')
+      .select('payment_mode')
+      .eq('order_id', paymentModalOrder.id);
+    
+    const existingModes = (existingPayData || []).map(p => p.payment_mode);
     const allModes = [...new Set([...existingModes, paymentMode])];
     const finalMode = allModes.length > 1 ? "Mixed" : paymentMode;
 
-    // Insert into payments ledger
-    const { error: payError } = await supabase
+    // Record in payments table
+    await supabase
       .from('payments')
-      .insert({ order_id: selectedOrder.id, amount, payment_mode: paymentMode });
+      .insert({ order_id: paymentModalOrder.id, amount, payment_mode: paymentMode });
 
-    if (payError) {
-      alert("Failed to record payment.");
-      setRecordingPayment(false);
-      return;
-    }
-
-    // Update the order totals
+    // Update order totals
     const { error: orderError } = await supabase
       .from('orders')
       .update({
@@ -262,27 +270,37 @@ export default function HistoryPage() {
         payment_mode: finalMode,
         status_locked: statusLocked
       })
-      .eq('id', selectedOrder.id);
+      .eq('id', paymentModalOrder.id);
 
     if (orderError) {
-      alert("Failed to update order.");
+      alert("Failed to update order status.");
     } else {
-      const newPaymentEntry = { id: Date.now(), order_id: selectedOrder.id, amount, payment_mode: paymentMode, recorded_at: new Date().toISOString() };
-      setOrderPayments([...orderPayments, newPaymentEntry]);
-
       const updatedOrder = {
-        ...selectedOrder,
+        ...paymentModalOrder,
         amountPaid: newAmountPaid,
         status: newStatus,
         paymentMode: finalMode,
         statusLocked
       };
-      setSelectedOrder(updatedOrder);
-      setOrders(orders.map(o => o.id === selectedOrder.id ? updatedOrder : o));
-      setPaymentAmount("");
-      setPaymentFeedback(`✓ ₹${amount.toLocaleString()} via ${paymentMode} recorded`);
-      setTimeout(() => setPaymentFeedback(null), 4000);
+
+      setOrders(orders.map(o => o.id === paymentModalOrder.id ? updatedOrder : o));
+
+      if (selectedOrder && selectedOrder.id === paymentModalOrder.id) {
+        setSelectedOrder(updatedOrder);
+        setOrderPayments(prev => [...prev, {
+          id: Date.now(),
+          order_id: paymentModalOrder.id,
+          amount,
+          payment_mode: paymentMode,
+          recorded_at: new Date().toISOString()
+        }]);
+      }
+
+      setUpdateFeedback(`✓ Payment of ₹${amount.toLocaleString()} recorded via ${paymentMode} for Order ${paymentModalOrder.id}.`);
+      setTimeout(() => setUpdateFeedback(null), 4000);
+      setPaymentModalOrder(null);
     }
+
     setRecordingPayment(false);
   };
 
@@ -300,11 +318,12 @@ export default function HistoryPage() {
       "Source",
       "Product",
       "Total (INR)",
+      "Amount Paid (INR)",
+      "Rest to Pay (INR)",
       "Payment Status",
       "Payment Mode",
       "Delivery Status",
-      "Details",
-      "ID Number"
+      "Details"
     ];
 
     const rows = filteredOrders.map(o => [
@@ -315,11 +334,12 @@ export default function HistoryPage() {
       `"${o.source || ""}"`,
       `"${(o.product || "").replace(/"/g, '""')}"`,
       o.total,
+      o.amountPaid,
+      o.total - o.amountPaid,
       `"${o.status}"`,
       `"${o.paymentMode || ""}"`,
       `"${o.deliveryStatus || ""}"`,
-      `"${(o.details || "").replace(/"/g, '""')}"`,
-      `"${o.idNumber || ""}"`
+      `"${(o.details || "").replace(/"/g, '""')}"`
     ]);
 
     const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
@@ -327,7 +347,7 @@ export default function HistoryPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `orders_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `nmj_orders_export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -366,7 +386,7 @@ export default function HistoryPage() {
               <span className="w-1.5 h-6 bg-brand-gold rounded-full inline-block"></span>
               Order History
             </h2>
-            <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Manage and track past invoices</p>
+            <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Manage and track past invoices for NMJ Photoshop</p>
           </div>
           
           <div className="flex flex-col items-end gap-3">
@@ -430,7 +450,7 @@ export default function HistoryPage() {
         {/* Feedback Alert */}
         {updateFeedback && (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-4 py-3 rounded-xl flex items-center gap-2 animate-in fade-in duration-200">
-            <CheckCircle2 size={16} className="text-emerald-600" />
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
             {updateFeedback}
           </div>
         )}
@@ -464,20 +484,23 @@ export default function HistoryPage() {
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gold-200 overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[800px]">
+            <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="bg-gold-50/50 border-b border-gold-200">
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Date / Order ID</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Customer</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Product</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Total Due</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest text-right">Status & Actions</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Total / Rest</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Payment Mode & Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Delivery Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gold-100">
                 {filteredOrders.length > 0 ? (
                   filteredOrders.map((order) => {
                     const isEditable = !order.statusLocked && (order.status === "Unpaid" || order.status === "Pending" || order.status === "Partial");
+                    const restToPay = Math.max(0, order.total - order.amountPaid);
                     
                     return (
                       <tr key={order.id} className="hover:bg-gold-50/30 transition-colors">
@@ -493,35 +516,57 @@ export default function HistoryPage() {
                           <span className="text-sm font-bold text-dark-900 uppercase">{order.product}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm font-black text-dark-900">₹{order.total.toLocaleString()}</span>
+                          <div className="text-sm font-black text-dark-900">₹{order.total.toLocaleString()}</div>
+                          {restToPay > 0 ? (
+                            <div className="text-[10px] font-bold text-red-600">Rest: ₹{restToPay.toLocaleString()}</div>
+                          ) : (
+                            <div className="text-[10px] font-bold text-emerald-600">Paid in full</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-gold-100 text-dark-900 border border-gold-200 flex items-center gap-1">
+                              <Banknote size={12} className="text-brand-gold" />
+                              {order.paymentMode || 'Cash'}
+                            </span>
+                            <span className={cn("text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex items-center gap-1",
+                              order.status === "Paid" ? "bg-emerald-100 text-emerald-800" :
+                              order.status === "Unpaid" || order.status === "Pending" ? "bg-red-100 text-red-800" :
+                              "bg-amber-100 text-amber-800"
+                            )}>
+                              {order.status}
+                              {order.statusLocked && <Lock size={10} className="inline ml-0.5 text-dark-500" />}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <select
+                            value={order.deliveryStatus || 'Pending'}
+                            onChange={(e) => handleDeliveryStatusUpdate(order.id, e.target.value)}
+                            className={cn(
+                              "text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border focus:outline-none cursor-pointer transition-colors",
+                              order.deliveryStatus === "Delivered" ? "bg-emerald-50 text-emerald-800 border-emerald-300" :
+                              order.deliveryStatus === "Ready" ? "bg-blue-50 text-blue-800 border-blue-300" :
+                              order.deliveryStatus === "Processing" ? "bg-purple-50 text-purple-800 border-purple-300" :
+                              "bg-gold-50 text-dark-700 border-gold-200"
+                            )}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Processing">Processing</option>
+                            <option value="Ready">Ready for Pickup</option>
+                            <option value="Delivered">Delivered</option>
+                          </select>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-3">
-                            {isEditable ? (
-                              <div className="flex flex-col items-end gap-1">
-                                <select
-                                  value={order.status}
-                                  onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                                  className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 focus:outline-none focus:ring-2 focus:ring-brand-gold cursor-pointer"
-                                >
-                                  <option value={order.status} disabled>Update Status ({order.status})</option>
-                                  <option value="Paid">Paid (Completed)</option>
-                                  <option value="Partial">Partial</option>
-                                  <option value="Unpaid">Unpaid</option>
-                                </select>
-                                <span className="text-[9px] text-amber-600 font-bold tracking-tight">One-time update available</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <span className={cn("text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full flex items-center gap-1",
-                                  order.status === "Paid" ? "bg-emerald-100 text-emerald-700" :
-                                  order.status === "Unpaid" || order.status === "Pending" ? "bg-red-100 text-red-700" :
-                                  "bg-amber-100 text-amber-700"
-                                )}>
-                                  {order.status}
-                                  {order.statusLocked && <Lock size={10} className="inline ml-0.5" />}
-                                </span>
-                              </div>
+                          <div className="flex items-center justify-end gap-2.5">
+                            {isEditable && (
+                              <button
+                                onClick={() => openPaymentModal(order)}
+                                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 shadow-sm transition-colors cursor-pointer"
+                              >
+                                <CreditCard size={12} />
+                                Record Pay
+                              </button>
                             )}
 
                             <button 
@@ -537,7 +582,7 @@ export default function HistoryPage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-dark-400 font-bold text-[10px] tracking-widest uppercase">
+                    <td colSpan={7} className="px-6 py-12 text-center text-dark-400 font-bold text-[10px] tracking-widest uppercase">
                       No orders found matching the filter criteria.
                     </td>
                   </tr>
@@ -548,15 +593,128 @@ export default function HistoryPage() {
         </div>
       </div>
 
+      {/* Partial Payment Record Modal */}
+      {paymentModalOrder && (
+        <div className="fixed inset-0 bg-dark-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-gold-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-5 border-b border-gold-100 bg-gold-50/50">
+              <h3 className="text-sm font-bold text-dark-900 tracking-widest uppercase flex items-center gap-2">
+                <Banknote className="text-emerald-600" size={18} />
+                Record Partial / Full Payment
+              </h3>
+              <button 
+                onClick={() => setPaymentModalOrder(null)}
+                className="text-dark-400 hover:text-dark-900 transition-colors p-1"
+              >
+                <X size={20} strokeWidth={2} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-gold-50 rounded-xl p-3.5 border border-gold-200 space-y-1">
+                <div className="text-xs font-bold text-dark-900">{paymentModalOrder.id} • {paymentModalOrder.customer}</div>
+                <div className="flex justify-between text-xs text-dark-600">
+                  <span>Total Amount: <strong>₹{paymentModalOrder.total.toLocaleString()}</strong></span>
+                  <span>Already Paid: <strong className="text-emerald-700">₹{paymentModalOrder.amountPaid.toLocaleString()}</strong></span>
+                </div>
+                <div className="text-xs font-black text-red-600 pt-1 border-t border-gold-200 mt-1">
+                  Remaining Balance: ₹{(paymentModalOrder.total - paymentModalOrder.amountPaid).toLocaleString()}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-1.5">
+                  Payment Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                {paymentModalOrder.status === "Partial" ? (
+                  <div className="w-full bg-gold-50/50 border border-gold-200 rounded-xl px-4 py-2.5 text-base font-black text-dark-400 cursor-not-allowed">
+                    ₹{paymentModalOrder.total - paymentModalOrder.amountPaid} (Final Balance)
+                  </div>
+                ) : (
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      const restToPay = paymentModalOrder.total - paymentModalOrder.amountPaid;
+                      if (!isNaN(val) && val > restToPay) {
+                        setPaymentAmount(restToPay.toString());
+                      } else {
+                        setPaymentAmount(e.target.value);
+                      }
+                    }}
+                    placeholder={`Max ₹${paymentModalOrder.total - paymentModalOrder.amountPaid}`}
+                    className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold rounded-xl px-4 py-2.5 text-base font-black text-dark-900 outline-none transition-colors"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-1.5">
+                  Select Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["Cash", "GPay", "Card"].map(mode => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setPaymentMode(mode)}
+                      className={cn(
+                        "py-2 px-3 rounded-xl text-xs font-bold uppercase transition-all border text-center cursor-pointer",
+                        paymentMode === mode 
+                          ? "bg-dark-900 text-white border-dark-900 shadow-sm scale-[1.02]" 
+                          : "bg-white text-dark-700 border-gold-200 hover:bg-gold-50"
+                      )}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentModalOrder(null)}
+                  className="px-4 py-2 bg-gold-100 hover:bg-gold-200 text-dark-800 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmPayment}
+                  disabled={recordingPayment || !paymentAmount}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  <CheckCircle2 size={15} />
+                  {recordingPayment ? "Saving..." : "Confirm Payment"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-dark-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-gold-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-5 border-b border-gold-100 bg-gold-50/50">
-              <h3 className="text-sm font-bold text-dark-900 tracking-widest uppercase flex items-center gap-2">
-                <span className="w-1.5 h-4 bg-brand-gold rounded-full"></span>
-                Order Details
-              </h3>
+          <div className="bg-white rounded-2xl shadow-xl border border-gold-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-5 border-b border-gold-100 bg-gold-50/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-bold text-dark-900 tracking-widest uppercase flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-brand-gold rounded-full"></span>
+                  Order Details
+                </h3>
+                <Link
+                  href={`/invoice/${selectedOrder.id}`}
+                  target="_blank"
+                  className="text-[10px] font-bold text-brand-gold hover:text-dark-900 uppercase tracking-widest flex items-center gap-1 bg-gold-100/80 px-2.5 py-1 rounded-full border border-gold-200 transition-colors"
+                >
+                  Print Invoice <ExternalLink size={11} />
+                </Link>
+              </div>
               <button 
                 onClick={() => setSelectedOrder(null)}
                 className="text-dark-400 hover:text-dark-900 transition-colors p-1"
@@ -565,7 +723,7 @@ export default function HistoryPage() {
               </button>
             </div>
             
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto">
               <div className="flex justify-between items-start pb-4 border-b border-gold-100">
                 <div>
                   <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Order ID</div>
@@ -589,7 +747,7 @@ export default function HistoryPage() {
               </div>
 
               <div className="bg-gold-50 rounded-xl p-4 border border-gold-100">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Product</div>
                     <div className="font-bold text-brand-gold uppercase text-sm">{selectedOrder.product}</div>
@@ -599,15 +757,19 @@ export default function HistoryPage() {
                     <div className="font-black text-dark-900 text-lg">₹{selectedOrder.total.toLocaleString()}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Rest to Pay</div>
-                    <div className="font-black text-red-600 text-lg">₹{(selectedOrder.total - selectedOrder.amountPaid).toLocaleString()}</div>
+                    <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Amount Paid</div>
+                    <div className="font-black text-emerald-600 text-lg">₹{selectedOrder.amountPaid.toLocaleString()}</div>
                   </div>
-                  <div className="col-span-2 md:col-span-3">
+                  <div>
+                    <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Rest to Pay</div>
+                    <div className="font-black text-red-600 text-lg">₹{Math.max(0, selectedOrder.total - selectedOrder.amountPaid).toLocaleString()}</div>
+                  </div>
+                  <div className="col-span-2 md:col-span-4">
                     <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Details</div>
                     <div className="font-medium text-dark-900 text-sm">{selectedOrder.details || "-"}</div>
                   </div>
                   {selectedOrder.idNumber && (
-                    <div className="col-span-2 md:col-span-3 pt-1">
+                    <div className="col-span-2 md:col-span-4 pt-1">
                       <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">ID Number</div>
                       <div className="font-bold text-dark-900 text-sm">{selectedOrder.idNumber}</div>
                     </div>
@@ -615,6 +777,78 @@ export default function HistoryPage() {
                 </div>
               </div>
 
+              {/* Status Controls */}
+              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gold-100">
+                <div>
+                  <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1.5">Payment Status</div>
+                  <div className="font-extrabold text-xs uppercase flex items-center gap-1.5">
+                    <span className={cn("px-2.5 py-1 rounded-md text-[10px]",
+                      selectedOrder.status === "Paid" ? "bg-emerald-100 text-emerald-800" :
+                      selectedOrder.status === "Partial" ? "bg-amber-100 text-amber-800" :
+                      "bg-red-100 text-red-800"
+                    )}>
+                      {selectedOrder.status}
+                    </span>
+                    {selectedOrder.statusLocked && <Lock size={12} className="text-dark-400" />}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1.5">Delivery Status</div>
+                  <select
+                    value={selectedOrder.deliveryStatus || 'Pending'}
+                    onChange={(e) => handleDeliveryStatusUpdate(selectedOrder.id, e.target.value)}
+                    className="w-full text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg border border-gold-300 bg-gold-50 text-dark-900 focus:outline-none cursor-pointer"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Ready">Ready for Pickup</option>
+                    <option value="Delivered">Delivered</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Payment Ledger Breakdown */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest flex items-center gap-1.5">
+                    <Banknote size={14} />
+                    Payment History Breakdown
+                  </div>
+                  {selectedOrder.status !== "Paid" && (
+                    <button
+                      onClick={() => openPaymentModal(selectedOrder)}
+                      className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 uppercase tracking-widest flex items-center gap-1"
+                    >
+                      + Add Payment
+                    </button>
+                  )}
+                </div>
+
+                {orderPayments.length > 0 ? (
+                  <div className="space-y-2">
+                    {orderPayments.map((p: any, idx: number) => (
+                      <div key={p.id || idx} className="flex justify-between items-center text-xs bg-emerald-50/70 border border-emerald-100 rounded-xl px-3.5 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-emerald-900 uppercase tracking-wider">
+                            {idx === 0 ? "First Time" : idx === 1 ? "Second Time (Final)" : `Payment #${idx + 1}`}: {p.payment_mode || 'Cash'}
+                          </span>
+                          <span className="text-dark-400">•</span>
+                          <span className="text-dark-500 font-medium">
+                            {new Date(p.recorded_at).toLocaleDateString('en-IN', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <span className="font-black text-emerald-700 text-sm">+₹{parseFloat(p.amount).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-dark-400 font-medium italic py-2">
+                    First Time: <strong className="uppercase text-dark-800">{selectedOrder.paymentMode || 'Cash'}</strong> (₹{selectedOrder.amountPaid.toLocaleString()} paid)
+                  </div>
+                )}
+              </div>
+
+              {/* Expenses linked to order */}
               {orderExpenses.length > 0 && (
                 <div className="pt-2 border-t border-gold-100">
                   <div className="text-[10px] font-bold text-brand-gold uppercase tracking-widest mb-2">Order Expenses</div>
@@ -632,102 +866,6 @@ export default function HistoryPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Payment Mode</div>
-                  <div className="font-bold text-dark-900 text-xs uppercase">{selectedOrder.paymentMode}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Amt Status</div>
-                  {!selectedOrder.statusLocked && (selectedOrder.status === "Unpaid" || selectedOrder.status === "Pending" || selectedOrder.status === "Partial") ? (
-                    <select
-                      value={selectedOrder.status}
-                      onChange={(e) => handleStatusUpdate(selectedOrder.id, e.target.value)}
-                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 focus:outline-none focus:ring-1 focus:ring-brand-gold cursor-pointer w-full"
-                    >
-                      <option value={selectedOrder.status} disabled>Update ({selectedOrder.status})</option>
-                      <option value="Paid">Paid (Completed)</option>
-                      <option value="Partial">Partial</option>
-                      <option value="Unpaid">Unpaid</option>
-                    </select>
-                  ) : (
-                    <div className="font-bold text-dark-900 text-xs uppercase flex items-center gap-1">
-                      {selectedOrder.status}
-                      {selectedOrder.statusLocked && <Lock size={12} className="text-dark-400 inline" />}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Delivery</div>
-                  <div className="font-bold text-dark-900 text-xs uppercase">{selectedOrder.deliveryStatus}</div>
-                </div>
-              </div>
-
-              {/* Record Payment Panel - only if not fully paid */}
-              {selectedOrder.status !== "Paid" && (
-                <div className="border-t border-gold-100 pt-4 space-y-3">
-                  <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest flex items-center gap-1.5">
-                    <Banknote size={14} />
-                    Payment Ledger
-                  </div>
-
-                  {/* Payment History */}
-                  {orderPayments.length > 0 && (
-                    <div className="space-y-1.5">
-                      {orderPayments.map((p: any) => (
-                        <div key={p.id} className="flex justify-between items-center text-xs bg-emerald-50/60 border border-emerald-100 rounded-lg px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-emerald-800 uppercase tracking-wider">{p.payment_mode}</span>
-                            <span className="text-dark-400">•</span>
-                            <span className="text-dark-500 font-medium">{new Date(p.recorded_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                          <span className="font-black text-emerald-700">+₹{parseFloat(p.amount).toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {paymentFeedback && (
-                    <div className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                      {paymentFeedback}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-dark-500 mb-1 uppercase tracking-widest">Amount (₹)</label>
-                      <input
-                        type="number"
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value)}
-                        placeholder={`Max ₹${(selectedOrder.total - selectedOrder.amountPaid).toLocaleString()}`}
-                        className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold rounded-lg px-3 py-2 text-sm font-bold text-dark-900 outline-none transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-dark-500 mb-1 uppercase tracking-widest">Method</label>
-                      <select
-                        value={paymentMode}
-                        onChange={(e) => setPaymentMode(e.target.value)}
-                        className="bg-gold-50 border border-gold-200 focus:border-brand-gold rounded-lg px-3 py-2 text-xs font-bold text-dark-900 outline-none transition-colors uppercase"
-                      >
-                        <option value="Cash">Cash</option>
-                        <option value="GPay">GPay</option>
-                        <option value="Card">Card</option>
-                      </select>
-                    </div>
-                    <button
-                      onClick={handleRecordPayment}
-                      disabled={recordingPayment || !paymentAmount}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
-                    >
-                      <CreditCard size={13} />
-                      {recordingPayment ? "Saving..." : "Record"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
             </div>
           </div>
         </div>
@@ -736,4 +874,3 @@ export default function HistoryPage() {
     </SidebarLayout>
   );
 }
-

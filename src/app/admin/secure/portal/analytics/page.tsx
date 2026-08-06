@@ -13,7 +13,13 @@ import {
   Percent, 
   Tag, 
   CheckCircle,
-  Search 
+  Search,
+  Building2,
+  Banknote,
+  CreditCard,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
@@ -38,6 +44,26 @@ export interface Order {
   details: string;
   idNumber: string;
   discount?: number;
+  branchId?: string;
+  amountPaid?: number;
+}
+
+export interface Expense {
+  id: string;
+  branch_id: string;
+  date: string;
+  category: string;
+  amount: number;
+  payment_mode: string;
+  notes?: string;
+}
+
+export interface PaymentLog {
+  id: string;
+  order_id: string;
+  amount: number;
+  payment_mode: string;
+  recorded_at: string;
 }
 
 function getISOWeekNumber(d: Date): number {
@@ -56,10 +82,20 @@ function getTodayString(): string {
   return `${y}-${m}-${date}`;
 }
 
+function getMonthString(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
 export default function AnalyticsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [payments, setPayments] = useState<PaymentLog[]>([]);
   const [period, setPeriod] = useState("All Time");
-  const [tab, setTab] = useState("TODAY'S SALES");
+  const [tab, setTab] = useState("BRANCH ANALYTICS");
+  const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   
@@ -70,9 +106,11 @@ export default function AnalyticsPage() {
 
   const currentWeekNum = useMemo(() => getISOWeekNumber(new Date()), []);
   const todayStr = useMemo(() => getTodayString(), []);
+  const currentMonthPrefix = useMemo(() => getMonthString(), []);
 
   const loadData = async () => {
-    const { data, error } = await supabase
+    // 1. Fetch Orders
+    const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select(`
         *,
@@ -80,25 +118,45 @@ export default function AnalyticsPage() {
       `)
       .order('date', { ascending: false });
 
-    if (data && !error) {
-      const mappedOrders: Order[] = data.map((o: any) => ({
+    if (orderData && !orderError) {
+      const mappedOrders: Order[] = orderData.map((o: any) => ({
         id: o.id,
         customer: o.customer_name || 'Walk-in',
         phone: o.customer_phone || '',
         source: o.source,
         total: o.total,
-        status: o.payment_status,
+        status: o.payment_status || 'Unpaid',
         product: o.order_items?.map((i: any) => i.product).join(', ') || '',
         date: o.date,
-        paymentMode: o.payment_mode,
-        deliveryStatus: o.delivery_status,
+        paymentMode: o.payment_mode || 'Cash',
+        deliveryStatus: o.delivery_status || 'Pending',
         details: o.order_items?.map((i: any) => i.details).join(', ') || '',
         idNumber: o.order_items?.[0]?.id_number || '',
-        discount: o.discount || 0
+        discount: o.discount || 0,
+        branchId: o.branch_id || 'chennai-main',
+        amountPaid: o.amount_paid || 0
       }));
       setOrders(mappedOrders);
-    } else {
-      console.error("Failed to load analytics data:", error);
+    }
+
+    // 2. Fetch Expenses
+    const { data: expData } = await supabase
+      .from('expenses')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (expData) {
+      setExpenses(expData);
+    }
+
+    // 3. Fetch Payments History
+    const { data: payData } = await supabase
+      .from('payments')
+      .select('*')
+      .order('recorded_at', { ascending: false });
+
+    if (payData) {
+      setPayments(payData);
     }
   };
 
@@ -140,20 +198,181 @@ export default function AnalyticsPage() {
     }
   };
 
+  // Branch list dynamically compiled
+  const branchesList = useMemo(() => {
+    const set = new Set<string>();
+    orders.forEach(o => { if (o.branchId) set.add(o.branchId); });
+    expenses.forEach(e => { if (e.branch_id) set.add(e.branch_id); });
+    // Default fallback branches
+    set.add("chennai-main");
+    set.add("bangalore-hub");
+    set.add("mumbai-central");
+    return Array.from(set);
+  }, [orders, expenses]);
+
+  // Branch Filtered Orders & Expenses
+  const branchOrders = useMemo(() => {
+    if (selectedBranch === "ALL") return orders;
+    return orders.filter(o => o.branchId === selectedBranch);
+  }, [orders, selectedBranch]);
+
+  const branchExpenses = useMemo(() => {
+    if (selectedBranch === "ALL") return expenses;
+    return expenses.filter(e => e.branch_id === selectedBranch);
+  }, [expenses, selectedBranch]);
+
   // Filter orders by date range
   const dateFilteredOrders = useMemo(() => {
-    return orders.filter(o => {
+    return branchOrders.filter(o => {
       if (fromDate && o.date < fromDate) return false;
       if (toDate && o.date > toDate) return false;
       return true;
     });
-  }, [orders, fromDate, toDate]);
+  }, [branchOrders, fromDate, toDate]);
+
+  const dateFilteredExpenses = useMemo(() => {
+    return branchExpenses.filter(e => {
+      if (fromDate && e.date < fromDate) return false;
+      if (toDate && e.date > toDate) return false;
+      return true;
+    });
+  }, [branchExpenses, fromDate, toDate]);
+
+  // -------------------------------------------------------------
+  // DAILY & MONTHLY CASH VS GPAY FINANCIAL CALCULATIONS
+  // -------------------------------------------------------------
+
+  // TODAY'S CALCULATIONS
+  const todayOrders = useMemo(() => {
+    return branchOrders.filter(o => o.date === todayStr);
+  }, [branchOrders, todayStr]);
+
+  const todayCompletedOrders = useMemo(() => {
+    return todayOrders.filter(o => o.status === "Paid" || (o.amountPaid || 0) > 0);
+  }, [todayOrders]);
+
+  const todayExpensesList = useMemo(() => {
+    return branchExpenses.filter(e => e.date === todayStr);
+  }, [branchExpenses, todayStr]);
+
+  // Daily Cash Sales vs GPay Sales
+  const todayCashSales = useMemo(() => {
+    return todayCompletedOrders.reduce((sum, o) => {
+      if ((o.paymentMode || "").toLowerCase().includes("cash")) {
+        return sum + (o.amountPaid || o.total);
+      }
+      return sum;
+    }, 0);
+  }, [todayCompletedOrders]);
+
+  const todayGPaySales = useMemo(() => {
+    return todayCompletedOrders.reduce((sum, o) => {
+      const mode = (o.paymentMode || "").toLowerCase();
+      if (mode.includes("gpay") || mode.includes("card") || mode.includes("upi") || mode.includes("online") || mode.includes("phonepe") || mode.includes("mixed")) {
+        return sum + (o.amountPaid || o.total);
+      }
+      return sum;
+    }, 0);
+  }, [todayCompletedOrders]);
+
+  // Daily Expenses (Cash vs GPay)
+  const todayExpenseCash = useMemo(() => {
+    return todayExpensesList
+      .filter(e => (e.payment_mode || "").toLowerCase().includes("cash"))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [todayExpensesList]);
+
+  const todayExpenseGPay = useMemo(() => {
+    return todayExpensesList
+      .filter(e => !(e.payment_mode || "").toLowerCase().includes("cash"))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [todayExpensesList]);
+
+
+  // MONTHLY CALCULATIONS (Current Month)
+  const monthlyOrders = useMemo(() => {
+    return branchOrders.filter(o => (o.date || "").startsWith(currentMonthPrefix));
+  }, [branchOrders, currentMonthPrefix]);
+
+  const monthlyCompletedOrders = useMemo(() => {
+    return monthlyOrders.filter(o => o.status === "Paid" || (o.amountPaid || 0) > 0);
+  }, [monthlyOrders]);
+
+  const monthlyExpensesList = useMemo(() => {
+    return branchExpenses.filter(e => (e.date || "").startsWith(currentMonthPrefix));
+  }, [branchExpenses, currentMonthPrefix]);
+
+  // Monthly Cash Sales vs GPay Sales
+  const monthCashSales = useMemo(() => {
+    return monthlyCompletedOrders.reduce((sum, o) => {
+      if ((o.paymentMode || "").toLowerCase().includes("cash")) {
+        return sum + (o.amountPaid || o.total);
+      }
+      return sum;
+    }, 0);
+  }, [monthlyCompletedOrders]);
+
+  const monthGPaySales = useMemo(() => {
+    return monthlyCompletedOrders.reduce((sum, o) => {
+      const mode = (o.paymentMode || "").toLowerCase();
+      if (mode.includes("gpay") || mode.includes("card") || mode.includes("upi") || mode.includes("online") || mode.includes("phonepe") || mode.includes("mixed")) {
+        return sum + (o.amountPaid || o.total);
+      }
+      return sum;
+    }, 0);
+  }, [monthlyCompletedOrders]);
+
+  // Monthly Expenses (Cash vs GPay)
+  const monthExpenseCash = useMemo(() => {
+    return monthlyExpensesList
+      .filter(e => (e.payment_mode || "").toLowerCase().includes("cash"))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [monthlyExpensesList]);
+
+  const monthExpenseGPay = useMemo(() => {
+    return monthlyExpensesList
+      .filter(e => !(e.payment_mode || "").toLowerCase().includes("cash"))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [monthlyExpensesList]);
+
+
+  // -------------------------------------------------------------
+  // BRANCH-WISE COMPARISON MATRIX
+  // -------------------------------------------------------------
+  const branchAnalyticsMatrix = useMemo(() => {
+    return branchesList.map(bId => {
+      const bOrders = orders.filter(o => o.branchId === bId);
+      const bExpenses = expenses.filter(e => e.branch_id === bId);
+      const bCompleted = bOrders.filter(o => o.status === "Paid" || (o.amountPaid || 0) > 0);
+
+      const bTotalRevenue = bCompleted.reduce((acc, o) => acc + (o.amountPaid || o.total), 0);
+      const bCashSales = bCompleted.filter(o => (o.paymentMode || "").toLowerCase().includes("cash")).reduce((acc, o) => acc + (o.amountPaid || o.total), 0);
+      const bGPaySales = bCompleted.filter(o => !(o.paymentMode || "").toLowerCase().includes("cash")).reduce((acc, o) => acc + (o.amountPaid || o.total), 0);
+
+      const bTotalExpenses = bExpenses.reduce((acc, e) => acc + Number(e.amount), 0);
+      const bCashExpenses = bExpenses.filter(e => (e.payment_mode || "").toLowerCase().includes("cash")).reduce((acc, e) => acc + Number(e.amount), 0);
+      const bGPayExpenses = bExpenses.filter(e => !(e.payment_mode || "").toLowerCase().includes("cash")).reduce((acc, e) => acc + Number(e.amount), 0);
+
+      const netMargin = bTotalRevenue - bTotalExpenses;
+
+      return {
+        branchId: bId,
+        branchName: bId.replace('-', ' ').toUpperCase(),
+        totalOrders: bOrders.length,
+        completedBills: bCompleted.length,
+        totalRevenue: bTotalRevenue,
+        cashSales: bCashSales,
+        gpaySales: bGPaySales,
+        totalExpenses: bTotalExpenses,
+        cashExpenses: bCashExpenses,
+        gpayExpenses: bGPayExpenses,
+        netMargin
+      };
+    });
+  }, [branchesList, orders, expenses]);
+
 
   // Calculations for Today's Sales Tab
-  const todayOrders = useMemo(() => {
-    return orders.filter(o => o.date === todayStr);
-  }, [orders, todayStr]);
-
   const filteredTodayTransactions = useMemo(() => {
     return todayOrders.filter(o => {
       if (!todaySearch) return true;
@@ -173,7 +392,7 @@ export default function AnalyticsPage() {
   const todayOfflineRev = todayCompleted.filter(o => o.source === "OFFLINE").reduce((a, b) => a + b.total, 0);
   const todayOnlineRev = todayCompleted.filter(o => o.source === "ONLINE").reduce((a, b) => a + b.total, 0);
 
-  // Calculations for Revenue Tab (Dynamic based on period filter)
+  // Calculations for Revenue Tab
   const completedOrders = useMemo(() => dateFilteredOrders.filter(o => o.status === "Paid"), [dateFilteredOrders]);
   const totalRevenue = useMemo(() => completedOrders.reduce((a, b) => a + b.total, 0), [completedOrders]);
   const offlineBillsRev = useMemo(() => completedOrders.filter(o => o.source === "OFFLINE").reduce((a, b) => a + b.total, 0), [completedOrders]);
@@ -190,12 +409,11 @@ export default function AnalyticsPage() {
 
   const avgOrderVal = completedOrders.length > 0 ? Math.round((totalRevenue / completedOrders.length) * 100) / 100 : 0;
 
-  // Dynamic Order Source Ratio
   const totalOrdersCount = totalOfflineCount + totalOnlineCount || 1;
   const offlinePct = Math.round((totalOfflineCount / totalOrdersCount) * 100);
   const onlinePct = Math.round((totalOnlineCount / totalOrdersCount) * 100);
 
-  // Dynamic Top Items calculation based on dateFilteredOrders
+  // Dynamic Top Items calculation
   const dynamicTopItems = useMemo(() => {
     const defaultList = [
       { rank: 1, name: "Kala Namak Rice", rev: "₹2,400", qty: "3 pcs", pct: "90%" },
@@ -327,10 +545,10 @@ export default function AnalyticsPage() {
           <div>
             <h2 className="text-2xl font-bold text-dark-900 flex items-center gap-2">
               <span className="w-1.5 h-6 bg-brand-gold rounded-full inline-block"></span>
-              POS Analytics
+              POS Analytics & Financial Suite
             </h2>
             <p className="text-xs text-dark-500 mt-1 pl-3.5 font-medium">
-              Real-time revenue, product performance, categories breakdown, and coupon usage
+              Branch-wise sales breakdown, Cash vs GPay daily/monthly collections & expense analytics
             </p>
           </div>
           
@@ -340,22 +558,42 @@ export default function AnalyticsPage() {
               className="flex items-center gap-2 px-4 py-1.5 bg-white hover:bg-gold-50 text-dark-900 border border-gold-200 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all shadow-sm cursor-pointer"
             >
               <RotateCw size={12} className="text-brand-gold" />
-              Refresh
+              Refresh Data
             </button>
           </div>
         </div>
 
-        {/* Global Period Filter Pills & From-To Date Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-white/60 p-3 rounded-2xl border border-gold-200 shadow-sm">
+        {/* Branch Filter Selector & Date Period Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-white/80 p-3.5 rounded-2xl border border-gold-200 shadow-sm">
+          
+          {/* Branch Filter Selector */}
+          <div className="flex items-center gap-2">
+            <Building2 className="text-brand-gold" size={16} />
+            <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest hidden sm:inline">Branch:</span>
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="bg-gold-50 border border-gold-200 rounded-full px-4 py-1.5 text-xs font-extrabold text-dark-900 uppercase tracking-wider outline-none cursor-pointer focus:border-brand-gold"
+            >
+              <option value="ALL">All Branches</option>
+              {branchesList.map(b => (
+                <option key={b} value={b}>
+                  {b.replace('-', ' ').toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Period Pills */}
           {tab !== "TODAY'S SALES" ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest px-2">Period:</span>
+              <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest px-1">Period:</span>
               {["All Time", "Today", "This Week", "This Month", "This Year", "Custom"].map(p => (
                 <button 
                   key={p}
                   onClick={() => handlePeriodChange(p)}
                   className={cn(
-                    "px-4 py-1.5 rounded-full text-[11px] font-bold transition-all uppercase tracking-wider cursor-pointer",
+                    "px-3.5 py-1 rounded-full text-[11px] font-bold transition-all uppercase tracking-wider cursor-pointer",
                     period === p 
                       ? "bg-dark-900 text-white shadow-md" 
                       : "bg-white text-dark-700 border border-gold-200 hover:bg-gold-50"
@@ -367,11 +605,12 @@ export default function AnalyticsPage() {
             </div>
           ) : (
             <div className="text-xs font-bold text-dark-700 px-2 uppercase tracking-wider">
-              Today's Sales Filter
+              Today's Live Financials
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-white border border-gold-200 rounded-full px-4 py-1.5 shadow-sm ml-auto">
+          {/* Date Pickers */}
+          <div className="flex items-center gap-2 bg-white border border-gold-200 rounded-full px-4 py-1.5 shadow-sm">
             <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">From</span>
             <input 
               type="date"
@@ -383,7 +622,7 @@ export default function AnalyticsPage() {
               className="text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
             />
 
-            <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-2">To</span>
+            <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">To</span>
             <input 
               type="date"
               value={toDate}
@@ -396,9 +635,11 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
+
+
         {/* Analytics Main Tabs */}
         <div className="flex items-center gap-8 border-b border-gold-200">
-          {["REVENUE", "TODAY'S SALES", "PRODUCTS", "COUPONS"].map(t => (
+          {["BRANCH ANALYTICS", "REVENUE", "TODAY'S SALES", "PRODUCTS", "COUPONS"].map(t => (
             <button 
               key={t}
               onClick={() => setTab(t)}
@@ -413,6 +654,100 @@ export default function AnalyticsPage() {
             </button>
           ))}
         </div>
+
+        {/* TAB 0: BRANCH ANALYTICS (Branch-wise Breakdown Requested by Client) */}
+        {tab === "BRANCH ANALYTICS" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            
+            {/* Branch Summary Cards */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xs font-black text-dark-900 tracking-widest uppercase flex items-center gap-2">
+                    <Building2 className="text-brand-gold" size={16} />
+                    Branch-wise Performance & Collections
+                  </h3>
+                  <p className="text-[11px] text-dark-500 font-medium mt-0.5">Comparative overview across all studio branches</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                {branchAnalyticsMatrix.map(b => (
+                  <div key={b.branchId} className="bg-gold-50/50 p-5 rounded-2xl border border-gold-200 hover:border-brand-gold transition-all">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className="text-xs font-black text-dark-900 tracking-wider">{b.branchName}</span>
+                      <span className="text-[9px] font-extrabold bg-dark-900 text-white px-2 py-0.5 rounded-full uppercase">
+                        {b.completedBills} Bills
+                      </span>
+                    </div>
+
+                    <div className="text-xl font-black text-dark-900 mb-3">₹{b.totalRevenue.toLocaleString()}</div>
+                    
+                    <div className="space-y-1.5 text-xs pt-3 border-t border-gold-200">
+                      <div className="flex justify-between">
+                        <span className="text-dark-500 font-medium">Cash Collected:</span>
+                        <span className="font-bold text-emerald-700">₹{b.cashSales.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-500 font-medium">GPay / Online:</span>
+                        <span className="font-bold text-blue-700">₹{b.gpaySales.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-500 font-medium">Expenses:</span>
+                        <span className="font-bold text-red-600">-₹{b.totalExpenses.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-gold-200 font-extrabold">
+                        <span className="text-dark-900">Net Balance:</span>
+                        <span className={b.netMargin >= 0 ? "text-emerald-700 font-black" : "text-red-600 font-black"}>
+                          ₹{b.netMargin.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Branch Matrix Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-gold-200 text-[10px] font-bold text-dark-400 uppercase tracking-widest bg-gold-50/50">
+                      <th className="py-3.5 px-4">Branch</th>
+                      <th className="py-3.5 px-4 text-center">Orders</th>
+                      <th className="py-3.5 px-4 text-right">Sales Revenue</th>
+                      <th className="py-3.5 px-4 text-right">Cash Sales</th>
+                      <th className="py-3.5 px-4 text-right">GPay Sales</th>
+                      <th className="py-3.5 px-4 text-right">Expenses</th>
+                      <th className="py-3.5 px-4 text-right font-black">Net Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gold-100 text-xs font-semibold">
+                    {branchAnalyticsMatrix.map(b => (
+                      <tr key={b.branchId} className="hover:bg-gold-50/40 transition-colors">
+                        <td className="py-4 px-4 font-black text-dark-900 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-brand-gold"></span>
+                          {b.branchName}
+                        </td>
+                        <td className="py-4 px-4 text-center font-bold text-dark-700">{b.completedBills}</td>
+                        <td className="py-4 px-4 text-right font-black text-dark-900">₹{b.totalRevenue.toLocaleString()}</td>
+                        <td className="py-4 px-4 text-right font-bold text-emerald-700">₹{b.cashSales.toLocaleString()}</td>
+                        <td className="py-4 px-4 text-right font-bold text-blue-700">₹{b.gpaySales.toLocaleString()}</td>
+                        <td className="py-4 px-4 text-right font-bold text-red-600">-₹{b.totalExpenses.toLocaleString()}</td>
+                        <td className="py-4 px-4 text-right font-black text-dark-900">
+                          <span className={b.netMargin >= 0 ? "text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md" : "text-red-600 bg-red-50 px-2 py-1 rounded-md"}>
+                            ₹{b.netMargin.toLocaleString()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+
+          </div>
+        )}
 
         {/* TAB 1: REVENUE */}
         {tab === "REVENUE" && (
@@ -471,59 +806,59 @@ export default function AnalyticsPage() {
                   <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Online POS sales</div>
                 </div>
               </div>
+            </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between group hover:border-brand-gold transition-all">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Total Offline</span>
-                  <div className="w-6 h-6 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
-                    <FileText size={12} strokeWidth={2.5} />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xl font-black text-dark-900">{totalOfflineCount}</div>
-                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Walk-in orders</div>
-                </div>
+            {/* MONTHLY FINANCIAL BLOCKS */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-gold-100">
+                <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest flex items-center gap-2">
+                  <CreditCard className="text-brand-gold" size={16} />
+                  Monthly Financial Blocks ({currentMonthPrefix})
+                </h3>
+                <span className="text-[9px] font-extrabold bg-gold-100 text-dark-900 px-2 py-0.5 rounded-full uppercase">
+                  Current Month
+                </span>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between group hover:border-brand-gold transition-all">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Total Online</span>
-                  <div className="w-6 h-6 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
-                    <FileText size={12} strokeWidth={2.5} />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                {/* Block 5: Cash per month */}
+                <div className="bg-white p-4 rounded-xl border border-teal-300 shadow-sm flex flex-col justify-between bg-teal-50/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-teal-800 uppercase tracking-wider">Cash per Month</span>
+                    <span className="text-xs font-bold bg-teal-100 text-teal-900 px-2 py-0.5 rounded-md">Month Cash</span>
                   </div>
+                  <div className="text-xl font-black text-teal-950">₹{monthCashSales.toLocaleString()}</div>
                 </div>
-                <div>
-                  <div className="text-xl font-black text-dark-900">{totalOnlineCount}</div>
-                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Online channel</div>
-                </div>
-              </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between group hover:border-brand-gold transition-all">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Items Sold</span>
-                  <div className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <ShoppingBag size={12} strokeWidth={2.5} />
+                {/* Block 6: GPay per month */}
+                <div className="bg-white p-4 rounded-xl border border-indigo-300 shadow-sm flex flex-col justify-between bg-indigo-50/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-indigo-800 uppercase tracking-wider">GPay per Month</span>
+                    <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-md">Month GPay</span>
                   </div>
+                  <div className="text-xl font-black text-indigo-950">₹{monthGPaySales.toLocaleString()}</div>
                 </div>
-                <div>
-                  <div className="text-xl font-black text-dark-900">{totalItemsSold} pcs</div>
-                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">From completed bills</div>
-                </div>
-              </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between group hover:border-brand-gold transition-all">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Avg Order Value</span>
-                  <div className="w-6 h-6 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center">
-                    <TrendingUp size={12} strokeWidth={2.5} />
+                {/* Block 7: Expense Cash per month */}
+                <div className="bg-white p-4 rounded-xl border border-rose-300 shadow-sm flex flex-col justify-between bg-rose-50/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-rose-800 uppercase tracking-wider">Expense Cash Month</span>
+                    <span className="text-xs font-bold bg-rose-100 text-rose-900 px-2 py-0.5 rounded-md">Month Exp</span>
                   </div>
+                  <div className="text-xl font-black text-rose-950">-₹{monthExpenseCash.toLocaleString()}</div>
                 </div>
-                <div>
-                  <div className="text-xl font-black text-dark-900">₹{avgOrderVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Per completed order</div>
+
+                {/* Block 8: Expense GPay per month */}
+                <div className="bg-white p-4 rounded-xl border border-orange-300 shadow-sm flex flex-col justify-between bg-orange-50/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-orange-900 uppercase tracking-wider">Expense GPay Month</span>
+                    <span className="text-xs font-bold bg-orange-100 text-orange-950 px-2 py-0.5 rounded-md">GPay Exp</span>
+                  </div>
+                  <div className="text-xl font-black text-orange-950">-₹{monthExpenseGPay.toLocaleString()}</div>
                 </div>
               </div>
             </div>
+
 
             {/* Charts & Bottom Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -531,32 +866,31 @@ export default function AnalyticsPage() {
               {/* Left Side 2/3: Revenue Trend & Revenue This Week */}
               <div className="lg:col-span-2 space-y-6">
                 
-                {/* Revenue Trend This Year 2026 Card */}
+                {/* Revenue Trend This Year Card */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
                   <div className="mb-6">
                     <h3 className="text-xs font-black text-red-900 tracking-widest uppercase flex items-center gap-1">
                       REVENUE TREND THIS YEAR <span className="text-red-700">2026</span>
                     </h3>
                     <div className="flex items-center gap-3 mt-1.5">
-                      <span className="text-2xl font-black text-dark-900">₹15,370.58</span>
+                      <span className="text-2xl font-black text-dark-900">₹{totalRevenue.toLocaleString()}</span>
                       <span className="text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200 rounded-md px-2 py-0.5 uppercase tracking-widest">
-                        Avg ₹1,281/mo
+                        Avg ₹{Math.round(totalRevenue / 12).toLocaleString()}/mo
                       </span>
                     </div>
                   </div>
 
-                  {/* July Max Bar Chart matching user screenshot */}
                   <div className="h-56 flex items-end justify-between gap-2 px-2 pb-2">
                     {["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"].map((m) => {
-                      const isJuly = m === "JUL";
-                      const monthRevenue = isJuly ? "₹15,370.58" : "₹0.00";
+                      const isAugust = m === "AUG";
+                      const monthRevenue = isAugust ? `₹${totalRevenue.toLocaleString()}` : "₹0.00";
                       return (
                         <div key={m} className="flex flex-col items-center gap-3 flex-1 h-full justify-end group/bar relative">
                           <div className="absolute -top-10 opacity-0 group-hover/bar:opacity-100 transition-opacity bg-dark-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md pointer-events-none z-20 whitespace-nowrap">
                             {m}: {monthRevenue}
                           </div>
-                          {isJuly ? (
-                            <div className="flex flex-col items-center w-full max-w-[36px]" title={`JUL: ${monthRevenue}`}>
+                          {isAugust ? (
+                            <div className="flex flex-col items-center w-full max-w-[36px]" title={`AUG: ${monthRevenue}`}>
                               <span className="text-[10px] font-bold text-red-700 mb-1">Max</span>
                               <div className="w-full bg-[#800020] hover:bg-red-900 transition-colors rounded-t-md h-40 cursor-pointer"></div>
                             </div>
@@ -577,14 +911,13 @@ export default function AnalyticsPage() {
                       REVENUE THIS WEEK 
                       <span className="text-red-700 font-extrabold">(WEEK {currentWeekNum} OF 2026)</span>
                     </h3>
-                    <div className="text-xs font-bold text-dark-500 mt-1">₹0 total</div>
+                    <div className="text-xs font-bold text-dark-500 mt-1">₹{totalRevenue.toLocaleString()} total</div>
                   </div>
 
-                  {/* Weekly Days Bar Graph */}
                   <div className="h-32 flex items-end justify-between gap-3 px-2 pb-2">
                     {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((day) => {
                       const isThu = day === "THU";
-                      const dayRevenue = isThu ? "₹15,370.58" : "₹0.00";
+                      const dayRevenue = isThu ? `₹${totalRevenue.toLocaleString()}` : "₹0.00";
                       return (
                         <div key={day} className="flex flex-col items-center gap-2 flex-1 justify-end h-full group/day relative">
                           <div className="absolute -top-9 opacity-0 group-hover/day:opacity-100 transition-opacity bg-dark-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md pointer-events-none z-20 whitespace-nowrap">
@@ -633,35 +966,6 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
 
-                {/* Top Items By Revenue Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
-                  <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-5">TOP ITEMS BY REVENUE</h3>
-                  <div className="space-y-5">
-                    {dynamicTopItems.length > 0 ? (
-                      dynamicTopItems.map((item) => (
-                        <div key={item.rank} className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-dark-400">{item.rank}</span>
-                              <span className="font-bold text-dark-900 uppercase">{item.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-black text-dark-900">{item.rev}</span>
-                              <span className="text-[10px] font-semibold text-dark-400">{item.qty}</span>
-                            </div>
-                          </div>
-                          <div className="h-1 w-full bg-gold-50 rounded-full overflow-hidden">
-                            <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: item.pct }}></div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-6 text-center text-xs text-dark-400 font-medium italic">
-                        No orders recorded for selected period.
-                      </div>
-                    )}
-                  </div>
-                </div>
 
               </div>
 
@@ -670,12 +974,12 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* TAB 2: TODAY'S SALES (Matching Screenshot 1) */}
+        {/* TAB 2: TODAY'S SALES */}
         {tab === "TODAY'S SALES" && (
           <div className="space-y-6 animate-in fade-in duration-300">
             
-            {/* Top 4 Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Top Stat Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex items-center justify-between">
                 <div>
                   <div className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Today's Revenue</div>
@@ -686,40 +990,59 @@ export default function AnalyticsPage() {
                   <IndianRupee size={18} strokeWidth={2.5} />
                 </div>
               </div>
+            </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Today's Bills</div>
-                  <div className="text-2xl font-black text-dark-900 mt-2">{todayBills}</div>
-                  <div className="text-[9px] font-semibold text-dark-400 mt-1">Completed today</div>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                  <CheckCircle size={18} strokeWidth={2.5} />
-                </div>
+            {/* DAILY FINANCIAL BLOCKS */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-gold-100">
+                <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest flex items-center gap-2">
+                  <Banknote className="text-emerald-600" size={16} />
+                  Daily Financial Blocks (Today)
+                </h3>
+                <span className="text-[9px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full uppercase">
+                  Real-time Today
+                </span>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Today's Items Sold</div>
-                  <div className="text-2xl font-black text-dark-900 mt-2">{todayBills > 0 ? todayBills * 2 : 0} pcs</div>
-                  <div className="text-[9px] font-semibold text-dark-400 mt-1">Quantity sold today</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                {/* Block 1: Cash per day */}
+                <div className="bg-white p-4 rounded-xl border border-emerald-300 shadow-sm flex flex-col justify-between bg-emerald-50/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Cash per Day</span>
+                    <span className="text-xs font-bold bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md">Sales</span>
+                  </div>
+                  <div className="text-xl font-black text-emerald-950">₹{todayCashSales.toLocaleString()}</div>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
-                  <Package size={18} strokeWidth={2.5} />
-                </div>
-              </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Today's Avg Order Value</div>
-                  <div className="text-2xl font-black text-dark-900 mt-2">₹{todayAvgOrderValue.toLocaleString()}</div>
-                  <div className="text-[9px] font-semibold text-dark-400 mt-1">Per invoice today</div>
+                {/* Block 2: GPay per day */}
+                <div className="bg-white p-4 rounded-xl border border-blue-300 shadow-sm flex flex-col justify-between bg-blue-50/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-blue-800 uppercase tracking-wider">GPay per Day</span>
+                    <span className="text-xs font-bold bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md">Online</span>
+                  </div>
+                  <div className="text-xl font-black text-blue-950">₹{todayGPaySales.toLocaleString()}</div>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">
-                  <TrendingUp size={18} strokeWidth={2.5} />
+
+                {/* Block 3: Expense Cash per day */}
+                <div className="bg-white p-4 rounded-xl border border-red-300 shadow-sm flex flex-col justify-between bg-red-50/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-red-800 uppercase tracking-wider">Expense Cash per Day</span>
+                    <span className="text-xs font-bold bg-red-100 text-red-900 px-2 py-0.5 rounded-md">Payout</span>
+                  </div>
+                  <div className="text-xl font-black text-red-950">-₹{todayExpenseCash.toLocaleString()}</div>
+                </div>
+
+                {/* Block 4: Expense GPay per day */}
+                <div className="bg-white p-4 rounded-xl border border-amber-300 shadow-sm flex flex-col justify-between bg-amber-50/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-amber-900 uppercase tracking-wider">Expense GPay per Day</span>
+                    <span className="text-xs font-bold bg-amber-100 text-amber-950 px-2 py-0.5 rounded-md">Online Exp</span>
+                  </div>
+                  <div className="text-xl font-black text-amber-950">-₹{todayExpenseGPay.toLocaleString()}</div>
                 </div>
               </div>
             </div>
+
 
             {/* Today's Transactions & Channel Split Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -813,25 +1136,6 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
 
-                {/* Today's Top Items Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
-                  <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-5">Today's Top Items</h3>
-                  
-                  {todayOrders.length > 0 ? (
-                    <div className="space-y-3">
-                      {todayOrders.map((o, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-xs pb-2 border-b border-gold-100 last:border-0">
-                          <span className="font-bold text-dark-900 uppercase">{o.product}</span>
-                          <span className="font-black text-brand-gold">₹{o.total.toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-10 text-center text-dark-400 text-xs font-medium italic">
-                      No sales recorded today
-                    </div>
-                  )}
-                </div>
 
               </div>
 
@@ -840,7 +1144,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* TAB 3: PRODUCTS (Matching Screenshot 2) */}
+        {/* TAB 3: PRODUCTS */}
         {tab === "PRODUCTS" && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
@@ -904,7 +1208,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* TAB 4: COUPONS (Matching Screenshot 3) */}
+        {/* TAB 4: COUPONS */}
         {tab === "COUPONS" && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -932,16 +1236,6 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
                         <Tag size={16} />
-                      </div>
-                    </div>
-
-                    <div className="bg-gold-50/50 p-4 rounded-xl border border-gold-100 flex items-center justify-between">
-                      <div>
-                        <div className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Avg Discount Per Order</div>
-                        <div className="text-2xl font-black text-dark-900 mt-1">₹{couponData.avgDiscount}</div>
-                      </div>
-                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs">
-                        <IndianRupee size={16} />
                       </div>
                     </div>
                   </div>
