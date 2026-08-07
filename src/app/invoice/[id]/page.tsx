@@ -33,7 +33,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         setError(true);
       } else {
         setOrder(data);
-        document.title = `Invoice ${data.id} - NMJ Photoshop`;
+        document.title = `Invoice ${data.id} - NMG PhotoShop`;
 
         // Fetch payment ledger history
         const { data: payData } = await supabase
@@ -142,7 +142,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
           <div className="w-12 h-12 bg-dark-900 rounded-full flex items-center justify-center mb-3 border-2 border-brand-gold shadow-sm">
             <Camera className="w-6 h-6 text-brand-gold" />
           </div>
-          <h1 className="text-3xl font-black text-dark-900 tracking-tight">NMJ Photoshop</h1>
+          <h1 className="text-3xl font-black text-dark-900 tracking-tight">NMG PhotoShop</h1>
           <p className="text-xs text-dark-500 font-bold tracking-wider mt-1 mb-4">INVOICE #{order.id}</p>
           
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-dark-600 font-semibold">
@@ -286,8 +286,8 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         
         {/* Footer */}
         <div className="border-t border-gold-100 p-6 print:p-2 text-center bg-gold-50/30 flex flex-col items-center justify-center gap-1.5">
-          <p className="text-xs font-bold text-dark-900 tracking-wider uppercase">Thank you for choosing NMJ Photoshop!</p>
-          <p className="text-[9px] font-bold text-brand-gold uppercase tracking-[0.15em]">NMJ Photoshop POS</p>
+          <p className="text-xs font-bold text-dark-900 tracking-wider uppercase">Thank you for choosing NMG PhotoShop!</p>
+          <p className="text-[9px] font-bold text-brand-gold uppercase tracking-[0.15em]">NMG PhotoShop POS</p>
         </div>
 
       </div>

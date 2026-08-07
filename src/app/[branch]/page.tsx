@@ -104,7 +104,7 @@ export default function Home() {
     const invoiceId = `INV-${year}-${randomChars}`;
     
     // Construct WhatsApp text
-    let text = `*New Order from Golden Retail* ${cameraEmoji}\n\n`;
+    let text = `*New Order from NMG PhotoShop* ${cameraEmoji}\n\n`;
     text += `*Invoice ID:* ${invoiceId}\n`;
     text += `*Customer:* ${customerName || 'Walk-in'}\n`;
     text += `*Mobile:* ${customerPhone || 'N/A'}\n`;
@@ -159,6 +159,8 @@ export default function Home() {
         }
       }
 
+      const amountPaidValue = amountStatus === "Completed" ? finalTotal : (amountStatus === "Partial" ? parseFloat(amountPaid) : 0);
+      
       const newOrder = {
         id: invoiceId,
         branch_id: branchId,
@@ -169,7 +171,7 @@ export default function Home() {
         staff_name: staffName,
         source: isOnline ? "ONLINE" : "OFFLINE",
         total: finalTotal,
-        amount_paid: amountStatus === "Completed" ? finalTotal : (amountStatus === "Partial" ? parseFloat(amountPaid) : 0),
+        amount_paid: amountPaidValue,
         payment_status: amountStatus === "Pending" ? "Unpaid" : (amountStatus === "Completed" ? "Paid" : "Partial"),
         payment_mode: amountStatus === "Pending" ? "N/A" : paymentMode,
         delivery_status: deliveryStatus,
@@ -179,6 +181,15 @@ export default function Home() {
       
       const { error: orderError } = await supabase.from('orders').insert(newOrder);
       if (orderError) throw orderError;
+
+      if (amountPaidValue > 0) {
+        const { error: paymentError } = await supabase.from('payments').insert({
+          order_id: invoiceId,
+          amount: amountPaidValue,
+          payment_mode: amountStatus === "Pending" ? "N/A" : paymentMode
+        });
+        if (paymentError) throw paymentError;
+      }
 
       const orderItems = cart.map(item => ({
         order_id: invoiceId,
