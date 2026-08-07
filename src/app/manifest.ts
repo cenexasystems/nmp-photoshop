@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Golden Billing POS",
+    name: "NMG PhotoShop POS",
     short_name: "Billing POS",
     description: "Premium Client billing and invoicing platform",
     start_url: "/",

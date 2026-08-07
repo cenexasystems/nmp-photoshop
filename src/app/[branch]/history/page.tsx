@@ -347,7 +347,7 @@ export default function HistoryPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `nmj_orders_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `nmg_orders_export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -386,7 +386,7 @@ export default function HistoryPage() {
               <span className="w-1.5 h-6 bg-brand-gold rounded-full inline-block"></span>
               Order History
             </h2>
-            <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Manage and track past invoices for NMJ Photoshop</p>
+            <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Manage and track past invoices for NMG PhotoShop</p>
           </div>
           
           <div className="flex flex-col items-end gap-3">
@@ -824,28 +824,42 @@ export default function HistoryPage() {
                   )}
                 </div>
 
-                {orderPayments.length > 0 ? (
-                  <div className="space-y-2">
-                    {orderPayments.map((p: any, idx: number) => (
-                      <div key={p.id || idx} className="flex justify-between items-center text-xs bg-emerald-50/70 border border-emerald-100 rounded-xl px-3.5 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-emerald-900 uppercase tracking-wider">
-                            {idx === 0 ? "First Time" : idx === 1 ? "Second Time (Final)" : `Payment #${idx + 1}`}: {p.payment_mode || 'Cash'}
-                          </span>
-                          <span className="text-dark-400">•</span>
-                          <span className="text-dark-500 font-medium">
-                            {new Date(p.recorded_at).toLocaleDateString('en-IN', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                {(() => {
+                  let totalRecorded = orderPayments.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0);
+                  let displayPayments = [...orderPayments];
+                  
+                  if (totalRecorded < selectedOrder.amountPaid) {
+                     displayPayments.unshift({
+                        id: 'legacy-first',
+                        amount: selectedOrder.amountPaid - totalRecorded,
+                        payment_mode: selectedOrder.paymentMode === 'Mixed' ? 'Cash' : selectedOrder.paymentMode,
+                        recorded_at: selectedOrder.date
+                     });
+                  }
+
+                  return displayPayments.length > 0 ? (
+                    <div className="space-y-2">
+                      {displayPayments.map((p: any, idx: number) => (
+                        <div key={p.id || idx} className="flex justify-between items-center text-xs bg-emerald-50/70 border border-emerald-100 rounded-xl px-3.5 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-emerald-900 uppercase tracking-wider">
+                              {idx === 0 ? "First Time" : idx === 1 ? "Second Time" : `Payment #${idx + 1}`}: {p.payment_mode || 'Cash'}
+                            </span>
+                            <span className="text-dark-400">•</span>
+                            <span className="text-dark-500 font-medium">
+                              {new Date(p.recorded_at).toLocaleDateString('en-IN', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <span className="font-black text-emerald-700 text-sm">+₹{parseFloat(p.amount).toLocaleString()}</span>
                         </div>
-                        <span className="font-black text-emerald-700 text-sm">+₹{parseFloat(p.amount).toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-xs text-dark-400 font-medium italic py-2">
-                    First Time: <strong className="uppercase text-dark-800">{selectedOrder.paymentMode || 'Cash'}</strong> (₹{selectedOrder.amountPaid.toLocaleString()} paid)
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-dark-400 font-medium italic py-2">
+                      No payments recorded yet.
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Expenses linked to order */}
