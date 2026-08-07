@@ -31,7 +31,7 @@ export default function BranchSelectionPage() {
           GR
         </div>
         <h1 className="text-3xl md:text-4xl font-bold tracking-widest uppercase text-dark-900 mb-3">
-          Golden Retail POS
+          NMG PhotoShop POS
         </h1>
         <p className="text-sm text-dark-500 font-bold uppercase tracking-[0.2em]">
           Select your active branch to begin billing

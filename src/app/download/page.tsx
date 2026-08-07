@@ -116,7 +116,7 @@ export default function DownloadPage() {
           </div>
           
           <h1 className="text-3xl md:text-4xl font-bold tracking-widest uppercase text-dark-900 mb-4 text-center md:text-left">
-            Golden POS
+            NMG PhotoShop
           </h1>
           
           <p className="text-sm text-dark-500 font-medium leading-relaxed mb-8 max-w-md text-center md:text-left">
@@ -251,7 +251,7 @@ export default function DownloadPage() {
                     Scroll down and tap <strong>Add to Home Screen</strong> <PlusSquare size={14} className="inline mx-1 text-brand-gold" />.
                   </li>
                   <li>
-                    Verify the name "Golden POS" and tap <strong>Add</strong> in the top-right corner.
+                    Verify the name <strong>NMG PhotoShop</strong> and tap <strong>Add</strong> in the top-right corner.
                   </li>
                 </ol>
               </div>
@@ -263,7 +263,7 @@ export default function DownloadPage() {
 
       {/* Footer Info */}
       <div className="max-w-4xl w-full mx-auto mt-12 text-center text-[10px] font-bold text-dark-400 uppercase tracking-widest">
-        Golden POS is built with secure offline-first caching via Serwist.
+        NMG PhotoShop is built with secure offline-first caching via Serwist.
       </div>
     </div>
   );

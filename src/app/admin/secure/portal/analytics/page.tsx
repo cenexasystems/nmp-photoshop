@@ -610,41 +610,45 @@ export default function AnalyticsPage() {
           )}
 
           {/* Date Pickers */}
-          <div className="flex items-center gap-2 bg-white border border-gold-200 rounded-full px-4 py-1.5 shadow-sm">
-            <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">From</span>
-            <input 
-              type="date"
-              value={fromDate}
-              onChange={(e) => {
-                setFromDate(e.target.value);
-                setPeriod("Custom");
-              }}
-              className="text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
-            />
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2 bg-white border border-gold-200 rounded-xl sm:rounded-full px-3 py-2 sm:px-4 sm:py-1.5 shadow-sm w-full sm:w-auto">
+            <div className="flex items-center gap-2 flex-1 min-w-[120px]">
+              <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">From</span>
+              <input 
+                type="date"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setPeriod("Custom");
+                }}
+                className="w-full text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
+              />
+            </div>
 
-            <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">To</span>
-            <input 
-              type="date"
-              value={toDate}
-              onChange={(e) => {
-                setToDate(e.target.value);
-                setPeriod("Custom");
-              }}
-              className="text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
-            />
+            <div className="flex items-center gap-2 flex-1 min-w-[120px]">
+              <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1 sm:ml-1">To</span>
+              <input 
+                type="date"
+                value={toDate}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setPeriod("Custom");
+                }}
+                className="w-full text-xs font-bold text-dark-900 bg-transparent outline-none cursor-pointer"
+              />
+            </div>
           </div>
         </div>
 
 
 
         {/* Analytics Main Tabs */}
-        <div className="flex items-center gap-8 border-b border-gold-200">
+        <div className="flex items-center gap-6 sm:gap-8 border-b border-gold-200 overflow-x-auto flex-nowrap">
           {["BRANCH ANALYTICS", "REVENUE", "TODAY'S SALES", "PRODUCTS", "COUPONS"].map(t => (
             <button 
               key={t}
               onClick={() => setTab(t)}
               className={cn(
-                "py-3 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer",
+                "py-3 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer whitespace-nowrap",
                 tab === t 
                   ? "border-dark-900 text-dark-900 font-extrabold scale-105" 
                   : "border-transparent text-dark-400 hover:text-dark-700"
@@ -823,36 +827,36 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
                 {/* Block 5: Cash per month */}
                 <div className="bg-white p-4 rounded-xl border border-teal-300 shadow-sm flex flex-col justify-between bg-teal-50/30">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                     <span className="text-[10px] font-black text-teal-800 uppercase tracking-wider">Cash per Month</span>
-                    <span className="text-xs font-bold bg-teal-100 text-teal-900 px-2 py-0.5 rounded-md">Month Cash</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-teal-100 text-teal-900 px-2 py-0.5 rounded-md whitespace-nowrap">Month Cash</span>
                   </div>
                   <div className="text-xl font-black text-teal-950">₹{monthCashSales.toLocaleString()}</div>
                 </div>
 
                 {/* Block 6: GPay per month */}
                 <div className="bg-white p-4 rounded-xl border border-indigo-300 shadow-sm flex flex-col justify-between bg-indigo-50/30">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                     <span className="text-[10px] font-black text-indigo-800 uppercase tracking-wider">GPay per Month</span>
-                    <span className="text-xs font-bold bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-md">Month GPay</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-md whitespace-nowrap">Month GPay</span>
                   </div>
                   <div className="text-xl font-black text-indigo-950">₹{monthGPaySales.toLocaleString()}</div>
                 </div>
 
                 {/* Block 7: Expense Cash per month */}
                 <div className="bg-white p-4 rounded-xl border border-rose-300 shadow-sm flex flex-col justify-between bg-rose-50/30">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                     <span className="text-[10px] font-black text-rose-800 uppercase tracking-wider">Expense Cash Month</span>
-                    <span className="text-xs font-bold bg-rose-100 text-rose-900 px-2 py-0.5 rounded-md">Month Exp</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-rose-100 text-rose-900 px-2 py-0.5 rounded-md whitespace-nowrap">Month Exp</span>
                   </div>
                   <div className="text-xl font-black text-rose-950">-₹{monthExpenseCash.toLocaleString()}</div>
                 </div>
 
                 {/* Block 8: Expense GPay per month */}
                 <div className="bg-white p-4 rounded-xl border border-orange-300 shadow-sm flex flex-col justify-between bg-orange-50/30">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                     <span className="text-[10px] font-black text-orange-900 uppercase tracking-wider">Expense GPay Month</span>
-                    <span className="text-xs font-bold bg-orange-100 text-orange-950 px-2 py-0.5 rounded-md">GPay Exp</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-orange-100 text-orange-950 px-2 py-0.5 rounded-md whitespace-nowrap">GPay Exp</span>
                   </div>
                   <div className="text-xl font-black text-orange-950">-₹{monthExpenseGPay.toLocaleString()}</div>
                 </div>
@@ -880,7 +884,8 @@ export default function AnalyticsPage() {
                     </div>
                   </div>
 
-                  <div className="h-56 flex items-end justify-between gap-2 px-2 pb-2">
+                  <div className="overflow-x-auto pb-2">
+                    <div className="h-56 flex items-end justify-between gap-2 px-2 pb-2 min-w-[500px]">
                     {["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"].map((m) => {
                       const isAugust = m === "AUG";
                       const monthRevenue = isAugust ? `₹${totalRevenue.toLocaleString()}` : "₹0.00";
@@ -901,6 +906,7 @@ export default function AnalyticsPage() {
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 </div>
 
@@ -977,20 +983,6 @@ export default function AnalyticsPage() {
         {/* TAB 2: TODAY'S SALES */}
         {tab === "TODAY'S SALES" && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            
-            {/* Top Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Today's Revenue</div>
-                  <div className="text-2xl font-black text-dark-900 mt-2">₹{todayRevenue.toLocaleString()}</div>
-                  <div className="text-[9px] font-semibold text-dark-400 mt-1">Completed today</div>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                  <IndianRupee size={18} strokeWidth={2.5} />
-                </div>
-              </div>
-            </div>
 
             {/* DAILY FINANCIAL BLOCKS */}
             <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 space-y-4">
@@ -1007,36 +999,36 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
                 {/* Block 1: Cash per day */}
                 <div className="bg-white p-4 rounded-xl border border-emerald-300 shadow-sm flex flex-col justify-between bg-emerald-50/30">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                     <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Cash per Day</span>
-                    <span className="text-xs font-bold bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md">Sales</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md whitespace-nowrap">Sales</span>
                   </div>
                   <div className="text-xl font-black text-emerald-950">₹{todayCashSales.toLocaleString()}</div>
                 </div>
 
                 {/* Block 2: GPay per day */}
                 <div className="bg-white p-4 rounded-xl border border-blue-300 shadow-sm flex flex-col justify-between bg-blue-50/30">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                     <span className="text-[10px] font-black text-blue-800 uppercase tracking-wider">GPay per Day</span>
-                    <span className="text-xs font-bold bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md">Online</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md whitespace-nowrap">Online</span>
                   </div>
                   <div className="text-xl font-black text-blue-950">₹{todayGPaySales.toLocaleString()}</div>
                 </div>
 
                 {/* Block 3: Expense Cash per day */}
                 <div className="bg-white p-4 rounded-xl border border-red-300 shadow-sm flex flex-col justify-between bg-red-50/30">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-black text-red-800 uppercase tracking-wider">Expense Cash per Day</span>
-                    <span className="text-xs font-bold bg-red-100 text-red-900 px-2 py-0.5 rounded-md">Payout</span>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                    <span className="text-[10px] font-black text-red-800 uppercase tracking-wider">Expense Cash Day</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-red-100 text-red-900 px-2 py-0.5 rounded-md whitespace-nowrap">Payout</span>
                   </div>
                   <div className="text-xl font-black text-red-950">-₹{todayExpenseCash.toLocaleString()}</div>
                 </div>
 
                 {/* Block 4: Expense GPay per day */}
                 <div className="bg-white p-4 rounded-xl border border-amber-300 shadow-sm flex flex-col justify-between bg-amber-50/30">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-black text-amber-900 uppercase tracking-wider">Expense GPay per Day</span>
-                    <span className="text-xs font-bold bg-amber-100 text-amber-950 px-2 py-0.5 rounded-md">Online Exp</span>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                    <span className="text-[10px] font-black text-amber-900 uppercase tracking-wider">Expense GPay Day</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold bg-amber-100 text-amber-950 px-2 py-0.5 rounded-md whitespace-nowrap">Online Exp</span>
                   </div>
                   <div className="text-xl font-black text-amber-950">-₹{todayExpenseGPay.toLocaleString()}</div>
                 </div>
@@ -1109,28 +1101,36 @@ export default function AnalyticsPage() {
               {/* Right Column: Today's Channel Split & Top Items */}
               <div className="space-y-6">
                 
-                {/* Channel Split Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
-                  <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-5">Today's Channel Split</h3>
+                {/* Channel Split & Total Revenue Card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 flex flex-col gap-6">
+                  <div>
+                    <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-2">Total Revenue</h3>
+                    <div className="text-3xl font-black text-dark-900">₹{todayRevenue.toLocaleString()}</div>
+                    <div className="text-[10px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Completed today</div>
+                  </div>
                   
-                  <div className="space-y-5">
-                    <div>
-                      <div className="flex justify-between items-center mb-1.5 text-xs font-extrabold">
-                        <span className="text-red-500 uppercase tracking-widest text-[10px]">Offline</span>
-                        <span className="text-dark-900">₹{todayOfflineRev.toLocaleString()}</span>
+                  <div className="border-t border-gold-100 pt-5">
+                    <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-4">Today's Channel Split</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-1 text-xs font-extrabold">
+                          <span className="text-red-500 uppercase tracking-widest text-[10px]">Offline</span>
+                          <span className="text-dark-900">₹{todayOfflineRev.toLocaleString()}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
+                          <div className="h-full bg-red-500 rounded-full" style={{ width: todayRevenue > 0 ? `${(todayOfflineRev / todayRevenue) * 100}%` : '0%' }}></div>
+                        </div>
                       </div>
-                      <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
-                        <div className="h-full bg-red-500 rounded-full" style={{ width: todayRevenue > 0 ? `${(todayOfflineRev / todayRevenue) * 100}%` : '0%' }}></div>
-                      </div>
-                    </div>
 
-                    <div>
-                      <div className="flex justify-between items-center mb-1.5 text-xs font-extrabold">
-                        <span className="text-emerald-500 uppercase tracking-widest text-[10px]">Online</span>
-                        <span className="text-dark-900">₹{todayOnlineRev.toLocaleString()}</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: todayRevenue > 0 ? `${(todayOnlineRev / todayRevenue) * 100}%` : '0%' }}></div>
+                      <div>
+                        <div className="flex justify-between items-center mb-1 text-xs font-extrabold">
+                          <span className="text-emerald-500 uppercase tracking-widest text-[10px]">Online</span>
+                          <span className="text-dark-900">₹{todayOnlineRev.toLocaleString()}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: todayRevenue > 0 ? `${(todayOnlineRev / todayRevenue) * 100}%` : '0%' }}></div>
+                        </div>
                       </div>
                     </div>
                   </div>
