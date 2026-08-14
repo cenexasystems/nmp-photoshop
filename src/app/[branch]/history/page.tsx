@@ -90,6 +90,7 @@ export default function HistoryPage() {
   const [toDate, setToDate] = useState<string>("");
   const [globalSearch, setGlobalSearch] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL STATUS");
+  const [deliveryFilter, setDeliveryFilter] = useState<string>("ALL");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderExpenses, setOrderExpenses] = useState<any[]>([]);
   const [orderPayments, setOrderPayments] = useState<any[]>([]);
@@ -394,9 +395,14 @@ export default function HistoryPage() {
       if (fromDate && order.date < fromDate) matchesDate = false;
       if (toDate && order.date > toDate) matchesDate = false;
 
-      return matchesSearch && matchesStatus && matchesDate;
+      // Delivery Status Filter
+      const matchesDelivery =
+        deliveryFilter === "ALL" ||
+        (order.deliveryStatus || "").toLowerCase() === deliveryFilter.toLowerCase();
+
+      return matchesSearch && matchesStatus && matchesDate && matchesDelivery;
     });
-  }, [orders, globalSearch, statusFilter, fromDate, toDate]);
+  }, [orders, globalSearch, statusFilter, deliveryFilter, fromDate, toDate]);
 
   return (
     <SidebarLayout>
@@ -496,12 +502,46 @@ export default function HistoryPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full md:w-48 bg-gold-50 border border-gold-200 rounded-xl px-4 py-3 outline-none focus:border-brand-gold focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-widest transition-colors cursor-pointer"
             >
-              <option value="ALL STATUS">All Status</option>
+              <option value="ALL STATUS">All Payment Status</option>
               <option value="PAID">Paid (Completed)</option>
               <option value="PARTIAL">Partial</option>
               <option value="UNPAID">Unpaid (Pending)</option>
             </select>
           </div>
+        </div>
+
+        {/* Delivery Status Filter Pills */}
+        <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gold-200 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest pr-1">Order Status:</span>
+          {[
+            { label: "All Orders", value: "ALL" },
+            { label: "Pending", value: "Pending" },
+            { label: "Processing", value: "Processing" },
+            { label: "Ready for Pickup", value: "Ready" },
+            { label: "Delivered", value: "Delivered" },
+          ].map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() => setDeliveryFilter(value)}
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider border",
+                deliveryFilter === value
+                  ? value === "ALL" ? "bg-dark-900 text-white border-dark-900"
+                    : value === "Pending" ? "bg-amber-500 text-white border-amber-500"
+                    : value === "Processing" ? "bg-blue-600 text-white border-blue-600"
+                    : value === "Ready" ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-purple-600 text-white border-purple-600"
+                  : "bg-white text-dark-600 border-gold-200 hover:bg-gold-50"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+          {deliveryFilter !== "ALL" && (
+            <span className="ml-auto text-[10px] font-bold text-dark-400">
+              {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''} found
+            </span>
+          )}
         </div>
 
         {/* Table */}

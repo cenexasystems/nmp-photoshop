@@ -28,8 +28,10 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
   const branch = pathname.split('/')[1] || 'pos';
 
   const NAV_ITEMS = [
+    { href: `/${branch}/dashboard`, label: "DASHBOARD", icon: BarChart3 },
     { href: `/${branch}`, label: "BILLING", icon: Calculator },
     { href: `/${branch}/history`, label: "ORDERS", icon: History },
+    { href: `/${branch}/customers`, label: "CUSTOMERS", icon: Users },
     { href: `/${branch}/expenses`, label: "EXPENSES", icon: Wallet },
   ];
 

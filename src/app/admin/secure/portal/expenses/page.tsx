@@ -24,15 +24,18 @@ const CATEGORIES = [
 ];
 
 export default function ExpensesPage() {
-  const [date, setDate] = useState("2026-07-08");
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [notes, setNotes] = useState("");
   const [period, setPeriod] = useState("Today");
   const [orderNo, setOrderNo] = useState("");
+  const [branch, setBranch] = useState("chennai-main");
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const BRANCHES = ["chennai-main", "bangalore-hub", "mumbai-central"];
 
   const loadExpenses = async () => {
     const { data, error } = await supabase
@@ -79,7 +82,7 @@ export default function ExpensesPage() {
     }
 
     const { error } = await supabase.from('expenses').insert({
-      branch_id: 'chennai-main', // Defaulting since Admin selects branch globally or we assume Chennai for demo
+      branch_id: branch,
       date,
       category,
       amount: parseFloat(amount),
@@ -100,10 +103,26 @@ export default function ExpensesPage() {
 
   const filteredExpenses = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
     return expenses.filter(e => {
       if (period === "Today") return e.date === today;
-      // Add logic for other periods if needed
-      return true; 
+      if (period === "Yesterday") {
+        const yest = new Date(now);
+        yest.setDate(now.getDate() - 1);
+        return e.date === yest.toISOString().split('T')[0];
+      }
+      if (period === "This Week") {
+        const day = now.getDay();
+        const diffToMon = day === 0 ? -6 : 1 - day;
+        const mon = new Date(now);
+        mon.setDate(now.getDate() + diffToMon);
+        return e.date >= mon.toISOString().split('T')[0];
+      }
+      if (period === "This Month") {
+        const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        return (e.date || '').startsWith(monthPrefix);
+      }
+      return true;
     });
   }, [expenses, period]);
 
@@ -136,6 +155,17 @@ export default function ExpensesPage() {
             </div>
             
             <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-[10px] font-bold text-dark-500 mb-1.5 uppercase tracking-widest">Branch</label>
+                <select
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold focus:bg-white rounded-xl px-4 py-2.5 outline-none transition-colors text-sm font-bold text-dark-900 uppercase tracking-wider"
+                >
+                  {BRANCHES.map(b => <option key={b} value={b}>{b.replace(/-/g, ' ').toUpperCase()}</option>)}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-bold text-dark-500 mb-1.5 uppercase tracking-widest">Date</label>
                 <input 
@@ -237,7 +267,7 @@ export default function ExpensesPage() {
               </div>
             </div>
 
-            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gold-200 flex flex-col overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 flex flex-col overflow-hidden" style={{ height: '520px' }}>
               {filteredExpenses.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center opacity-60 p-10 min-h-[300px]">
                   <Wallet size={40} strokeWidth={1.5} className="text-gold-400 mb-4" />
@@ -245,21 +275,26 @@ export default function ExpensesPage() {
                   <p className="text-[10px] font-bold text-dark-500 uppercase tracking-widest text-center">Add one on the left to start tracking outgoings.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gold-50 overflow-y-auto">
+                <div className="divide-y divide-gold-50 overflow-y-auto h-full">
                   {filteredExpenses.map((exp, idx) => (
-                    <div key={idx} className="p-4 flex justify-between items-center hover:bg-gold-50/50">
-                      <div>
-                        <div className="flex items-center gap-2">
+                    <div key={idx} className="p-4 flex justify-between items-start hover:bg-gold-50/50 gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="text-xs font-bold text-dark-900">{exp.category}</span>
                           {exp.category === 'ORDER' && (
                             <span className="px-2 py-0.5 bg-brand-gold/10 text-brand-gold text-[9px] font-bold uppercase rounded-full tracking-wider">Order Specific</span>
                           )}
+                          {exp.branch_id && (
+                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-bold uppercase rounded-full tracking-wider">
+                              {exp.branch_id.replace(/-/g, ' ')}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-dark-500 font-medium mt-0.5">{exp.date} • {exp.payment_mode}</div>
-                        {exp.notes && <div className="text-[10px] text-dark-400 italic mt-1 font-semibold">{exp.notes}</div>}
+                        {exp.notes && <div className="text-[10px] text-dark-400 italic mt-1 font-semibold truncate max-w-xs">{exp.notes}</div>}
                       </div>
-                      <div className="text-sm font-black text-red-600">
-                        -₹{exp.amount}
+                      <div className="text-sm font-black text-red-600 shrink-0">
+                        -₹{Number(exp.amount).toLocaleString()}
                       </div>
                     </div>
                   ))}

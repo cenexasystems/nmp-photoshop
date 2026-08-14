@@ -16,7 +16,6 @@ const PRODUCTS = ["Portrait", "Passport", "Print", "Frame", "Gift", "Photo Shoot
 const PAYMENT_MODES = ["Cash", "GPay", "Card"];
 const DELIVERY_STATUSES = ["Pending", "In Progress", "Delivered"];
 const AMOUNT_STATUSES = ["Pending", "Partial", "Completed"];
-const STAFF_MEMBERS = ["Admin", "Staff 1", "Staff 2", "Staff 3"];
 
 interface CartItem {
   id: number;
@@ -49,7 +48,7 @@ export default function Home() {
   const [amount, setAmount] = useState("");
   
   // Order Level Settings
-  const [staffName, setStaffName] = useState(STAFF_MEMBERS[0]);
+  const [staffName, setStaffName] = useState("");
   const [amountStatus, setAmountStatus] = useState(AMOUNT_STATUSES[2]);
   const [paymentMode, setPaymentMode] = useState(PAYMENT_MODES[0]);
   const [deliveryStatus, setDeliveryStatus] = useState(DELIVERY_STATUSES[0]);
@@ -97,48 +96,14 @@ export default function Home() {
     : parseFloat(discountValue) || 0;
   const finalTotal = Math.max(0, cartTotal - discountAmt);
 
-  const handleWhatsApp = async () => {
+  const handleSaveOrder = async (sendWhatsApp: boolean) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    const target = customerPhone.length === 10 ? customerPhone : "7904199050";
-    const cameraEmoji = String.fromCodePoint(0x1F4F8);
-    const sparkleEmoji = String.fromCodePoint(0x2728);
-    
     // Generate Invoice ID
     const year = new Date().getFullYear();
     const randomChars = Math.random().toString(36).substring(2, 7).toUpperCase();
     const invoiceId = `INV-${year}-${randomChars}`;
-    
-    // Construct WhatsApp text
-    let text = `*New Order from NMG PhotoShop* ${cameraEmoji}\n\n`;
-    text += `*Invoice ID:* ${invoiceId}\n`;
-    text += `*Customer:* ${customerName || 'Walk-in'}\n`;
-    text += `*Mobile:* ${customerPhone || 'N/A'}\n`;
-    text += `*Staff:* ${staffName}\n`;
-    if (customerDate) text += `*Date:* ${customerDate}\n`;
-    
-    text += `\n*Items:*\n`;
-    cart.forEach((item, i) => {
-      text += `${i+1}. *${item.product}* - *₹${item.amount}*\n`;
-      if (item.details) text += `   └ Details: ${item.details}\n`;
-      if (item.deliveryDate) text += `   └ Delivery Date: ${item.deliveryDate}\n`;
-      if (item.idNumber) text += `   └ ID: ${item.idNumber}\n`;
-    });
-    
-    text += `\n*Payment Status:* ${amountStatus}\n`;
-    if (discountAmt > 0) {
-      text += `*Subtotal:* ₹${cartTotal.toLocaleString()}\n`;
-      const discDesc = discountType === "percent" ? `${discountValue}%` : `₹${discountValue} flat`;
-      text += `*Discount:* ${discDesc} (-₹${discountAmt.toLocaleString()})\n`;
-    }
-    text += `*Total Amount:* ₹${finalTotal.toLocaleString()}\n`;
-    text += `*Delivery Status:* ${deliveryStatus}\n`;
-    if (notes) text += `*Notes:* ${notes}\n`;
-    
-    const invoiceUrl = `${window.location.origin}/invoice/${invoiceId}`;
-    text += `\n*View Invoice:* ${invoiceUrl}\n`;
-    text += `\nThank you for choosing us! ${sparkleEmoji}`;
     
     // Save to Supabase
     try {
@@ -215,15 +180,53 @@ export default function Home() {
     } catch (e) {
       console.error("Supabase Save Error:", e);
       alert("Failed to save to database. Please check console.");
+      setIsSubmitting(false);
+      return;
     }
     
-    const encodedMessage = encodeURIComponent(text);
-    window.open(`https://api.whatsapp.com/send/?phone=91${target}&text=${encodedMessage}`, "_blank");
+    if (sendWhatsApp) {
+      const target = customerPhone.length === 10 ? customerPhone : "7904199050";
+      const cameraEmoji = String.fromCodePoint(0x1F4F8);
+      const sparkleEmoji = String.fromCodePoint(0x2728);
+      
+      let text = `*New Order from NMG PhotoShop* ${cameraEmoji}\n\n`;
+      text += `*Invoice ID:* ${invoiceId}\n`;
+      text += `*Customer:* ${customerName || 'Walk-in'}\n`;
+      text += `*Mobile:* ${customerPhone || 'N/A'}\n`;
+      text += `*Staff:* ${staffName}\n`;
+      if (customerDate) text += `*Date:* ${customerDate}\n`;
+      
+      text += `\n*Items:*\n`;
+      cart.forEach((item, i) => {
+        text += `${i+1}. *${item.product}* - *₹${item.amount}*\n`;
+        if (item.details) text += `   └ Details: ${item.details}\n`;
+        if (item.deliveryDate) text += `   └ Delivery Date: ${item.deliveryDate}\n`;
+        if (item.idNumber) text += `   └ ID: ${item.idNumber}\n`;
+      });
+      
+      text += `\n*Payment Status:* ${amountStatus}\n`;
+      if (discountAmt > 0) {
+        text += `*Subtotal:* ₹${cartTotal.toLocaleString()}\n`;
+        const discDesc = discountType === "percent" ? `${discountValue}%` : `₹${discountValue} flat`;
+        text += `*Discount:* ${discDesc} (-₹${discountAmt.toLocaleString()})\n`;
+      }
+      text += `*Total Amount:* ₹${finalTotal.toLocaleString()}\n`;
+      text += `*Delivery Status:* ${deliveryStatus}\n`;
+      if (notes) text += `*Notes:* ${notes}\n`;
+      
+      const invoiceUrl = `${window.location.origin}/invoice/${invoiceId}`;
+      text += `\n*View Invoice:* ${invoiceUrl}\n`;
+      text += `\nThank you for choosing us! ${sparkleEmoji}`;
+
+      const encodedMessage = encodeURIComponent(text);
+      window.open(`https://api.whatsapp.com/send/?phone=91${target}&text=${encodedMessage}`, "_blank");
+    }
     
     // Clear order for the next customer
     setCart([]);
     setCustomerName("");
     setCustomerPhone("");
+    setStaffName("");
     setCustomerDate(new Date().toISOString().split('T')[0]);
     setAmountPaid("");
     setNotes("");
@@ -299,13 +302,13 @@ export default function Home() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Handled By (Staff)</label>
-                  <select 
+                  <input 
+                    type="text"
                     value={staffName}
                     onChange={(e) => setStaffName(e.target.value)}
-                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
-                  >
-                    {STAFF_MEMBERS.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                    placeholder="Staff name"
+                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
+                  />
                 </div>
               </div>
             </div>
@@ -324,15 +327,23 @@ export default function Home() {
                   {/* Product Type */}
                   <div className="col-span-1 md:col-span-2">
                     <label className="block text-[10px] font-bold text-dark-500 mb-3 uppercase tracking-widest">Select Product</label>
-                    <select
-                      value={product}
-                      onChange={(e) => setProduct(e.target.value)}
-                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-bold text-dark-900 uppercase tracking-wider"
-                    >
+                    <div className="flex flex-wrap gap-2">
                       {PRODUCTS.map(p => (
-                        <option key={p} value={p}>{p}</option>
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setProduct(p)}
+                          className={cn(
+                            "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border",
+                            product === p 
+                              ? "bg-dark-900 text-white border-dark-900 shadow-sm" 
+                              : "bg-white text-dark-600 border-gold-200 hover:bg-gold-50 hover:border-gold-300"
+                          )}
+                        >
+                          {p}
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
 
                   {/* Conditional Passport ID */}
@@ -608,20 +619,37 @@ export default function Home() {
               )}
               {amountStatus !== "Partial" && <div className="mb-5"></div>}
 
-              <button 
-                onClick={handleWhatsApp}
-                disabled={cart.length === 0 || isSubmitting}
-                className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl py-3.5 font-bold text-xs uppercase tracking-widest transition-all shadow-sm shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                    Processing...
-                  </>
-                ) : (
-                  "Send via WhatsApp"
-                )}
-              </button>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => handleSaveOrder(false)}
+                  disabled={cart.length === 0 || isSubmitting}
+                  className="w-full bg-dark-900 hover:bg-dark-800 text-white rounded-xl py-3.5 font-bold text-xs uppercase tracking-widest transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Only"
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => handleSaveOrder(true)}
+                  disabled={cart.length === 0 || isSubmitting}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl py-3.5 font-bold text-xs uppercase tracking-widest transition-all shadow-sm shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    "Save & WhatsApp"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

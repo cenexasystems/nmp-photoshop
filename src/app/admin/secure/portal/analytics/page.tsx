@@ -93,7 +93,7 @@ export default function AnalyticsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [payments, setPayments] = useState<PaymentLog[]>([]);
-  const [period, setPeriod] = useState("All Time");
+  const [period, setPeriod] = useState("This Month");
   const [tab, setTab] = useState("BRANCH ANALYTICS");
   const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
   const [fromDate, setFromDate] = useState("");
@@ -162,14 +162,12 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     loadData();
+    handlePeriodChange("This Month");
   }, []);
 
   const handlePeriodChange = (p: string) => {
     setPeriod(p);
-    if (p === "All Time") {
-      setFromDate("");
-      setToDate("");
-    } else if (p === "Today") {
+    if (p === "Today") {
       setFromDate(todayStr);
       setToDate(todayStr);
     } else if (p === "This Week") {
@@ -385,18 +383,18 @@ export default function AnalyticsPage() {
     });
   }, [todayOrders, todaySearch]);
 
-  const todayCompleted = useMemo(() => todayOrders.filter(o => o.status === "Paid"), [todayOrders]);
-  const todayRevenue = useMemo(() => todayCompleted.reduce((acc, o) => acc + o.total, 0), [todayCompleted]);
+  const todayCompleted = todayCompletedOrders;
+  const todayRevenue = useMemo(() => todayCompleted.reduce((acc, o) => acc + (o.amountPaid || o.total), 0), [todayCompleted]);
   const todayBills = todayCompleted.length;
   const todayAvgOrderValue = todayBills > 0 ? Math.round(todayRevenue / todayBills) : 0;
-  const todayOfflineRev = todayCompleted.filter(o => o.source === "OFFLINE").reduce((a, b) => a + b.total, 0);
-  const todayOnlineRev = todayCompleted.filter(o => o.source === "ONLINE").reduce((a, b) => a + b.total, 0);
+  const todayOfflineRev = todayCompleted.filter(o => o.source === "OFFLINE").reduce((a, b) => a + (b.amountPaid || b.total), 0);
+  const todayOnlineRev = todayCompleted.filter(o => o.source === "ONLINE").reduce((a, b) => a + (b.amountPaid || b.total), 0);
 
   // Calculations for Revenue Tab
-  const completedOrders = useMemo(() => dateFilteredOrders.filter(o => o.status === "Paid"), [dateFilteredOrders]);
-  const totalRevenue = useMemo(() => completedOrders.reduce((a, b) => a + b.total, 0), [completedOrders]);
-  const offlineBillsRev = useMemo(() => completedOrders.filter(o => o.source === "OFFLINE").reduce((a, b) => a + b.total, 0), [completedOrders]);
-  const onlineBillsRev = useMemo(() => completedOrders.filter(o => o.source === "ONLINE").reduce((a, b) => a + b.total, 0), [completedOrders]);
+  const completedOrders = useMemo(() => dateFilteredOrders.filter(o => o.status === "Paid" || (o.amountPaid || 0) > 0), [dateFilteredOrders]);
+  const totalRevenue = useMemo(() => completedOrders.reduce((a, b) => a + (b.amountPaid || b.total), 0), [completedOrders]);
+  const offlineBillsRev = useMemo(() => completedOrders.filter(o => o.source === "OFFLINE").reduce((a, b) => a + (b.amountPaid || b.total), 0), [completedOrders]);
+  const onlineBillsRev = useMemo(() => completedOrders.filter(o => o.source === "ONLINE").reduce((a, b) => a + (b.amountPaid || b.total), 0), [completedOrders]);
   const totalOfflineCount = useMemo(() => completedOrders.filter(o => o.source === "OFFLINE").length, [completedOrders]);
   const totalOnlineCount = useMemo(() => completedOrders.filter(o => o.source === "ONLINE").length, [completedOrders]);
   
@@ -588,7 +586,7 @@ export default function AnalyticsPage() {
           {tab !== "TODAY'S SALES" ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest px-1">Period:</span>
-              {["All Time", "Today", "This Week", "This Month", "This Year", "Custom"].map(p => (
+              {["Today", "This Week", "This Month", "This Year", "Custom"].map(p => (
                 <button 
                   key={p}
                   onClick={() => handlePeriodChange(p)}
@@ -1103,10 +1101,25 @@ export default function AnalyticsPage() {
                 
                 {/* Channel Split & Total Revenue Card */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 flex flex-col gap-6">
-                  <div>
-                    <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-2">Total Revenue</h3>
-                    <div className="text-3xl font-black text-dark-900">₹{todayRevenue.toLocaleString()}</div>
-                    <div className="text-[10px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Completed today</div>
+                  <div className="flex flex-col sm:flex-row gap-5 items-start justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-2">Total Revenue</h3>
+                      <div className="text-3xl font-black text-dark-900">₹{todayRevenue.toLocaleString()}</div>
+                      <div className="text-[10px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Completed today</div>
+                    </div>
+
+                    <div className="flex flex-col gap-2.5 pt-1 w-full sm:w-auto">
+                      <div className="flex items-center gap-2 text-[11px] font-extrabold text-dark-700 tracking-wide">
+                        <span>Net Cash Profit</span>
+                        <span className="text-dark-300 font-medium">=</span>
+                        <span className="text-emerald-700">₹{(todayCashSales - todayExpenseCash).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] font-extrabold text-dark-700 tracking-wide">
+                        <span>Net GPay Profit</span>
+                        <span className="text-dark-300 font-medium">=</span>
+                        <span className="text-blue-700">₹{(todayGPaySales - todayExpenseGPay).toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="border-t border-gold-100 pt-5">
@@ -1242,11 +1255,11 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              {/* Right Column: Promo Campaign Performance */}
+              {/* Right Column: Discount Applied */}
               <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase">Promo Campaign Performance</h3>
+                  <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase">Discount Applied</h3>
                   
                   <div className="relative w-full sm:w-64">
                     <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dark-400" />
