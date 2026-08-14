@@ -189,7 +189,7 @@ export default function Home() {
       const cameraEmoji = String.fromCodePoint(0x1F4F8);
       const sparkleEmoji = String.fromCodePoint(0x2728);
       
-      let text = `*New Order from NMG PhotoShop* ${cameraEmoji}\n\n`;
+      let text = `*New Order from NMG Photo Park* ${cameraEmoji}\n\n`;
       text += `*Invoice ID:* ${invoiceId}\n`;
       text += `*Customer:* ${customerName || 'Walk-in'}\n`;
       text += `*Mobile:* ${customerPhone || 'N/A'}\n`;

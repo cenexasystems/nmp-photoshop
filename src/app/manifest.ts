@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "NMG PhotoShop POS",
-    short_name: "Billing POS",
+    name: "NMG Photo Park POS",
+    short_name: "NMG Photo Park",
     description: "Premium Client billing and invoicing platform",
     start_url: "/",
     display: "standalone",

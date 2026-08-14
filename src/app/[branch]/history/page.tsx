@@ -415,7 +415,7 @@ export default function HistoryPage() {
               <span className="w-1.5 h-6 bg-brand-gold rounded-full inline-block"></span>
               Order History
             </h2>
-            <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Manage and track past invoices for NMG PhotoShop</p>
+            <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Manage and track past invoices for NMG Photo Park</p>
           </div>
           
           <div className="flex flex-col items-end gap-3">

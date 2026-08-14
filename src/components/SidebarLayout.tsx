@@ -58,13 +58,11 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
         <div className={cn("p-6 flex items-center border-b border-gold-100", 
           isCollapsed && !isMobileOpen ? "justify-center" : "justify-between"
         )}>
-          <div className={cn("flex items-center gap-3 transition-all", isCollapsed && !isMobileOpen ? "justify-center w-full" : "")}>
-            <div className="w-8 h-8 rounded-lg bg-brand-gold flex shrink-0 items-center justify-center font-bold text-white text-xs tracking-tight shadow-sm">
-              NMG
-            </div>
+          <div className="flex items-center gap-3 transition-all">
+            <img src="/logo.png" alt="NMG Logo" className="w-8 h-8 object-contain shrink-0 rounded-lg shadow-sm" />
             {(!isCollapsed || isMobileOpen) && (
               <div>
-                <h1 className="font-bold text-base tracking-wider uppercase text-dark-900 whitespace-nowrap">NMG Photo Shop</h1>
+                <h1 className="font-bold text-base tracking-wider uppercase text-dark-900 whitespace-nowrap">NMG Photo Park</h1>
                 <p className="text-[9px] font-bold text-brand-gold uppercase tracking-widest mt-0.5">{branch.replace(/-/g, ' ')} Branch</p>
               </div>
             )}
@@ -142,10 +140,8 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-gold-200 z-30">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-brand-gold text-white flex items-center justify-center font-bold text-xs shadow-sm">
-              NMG
-            </div>
-            <span className="font-bold tracking-widest uppercase text-sm text-dark-900">NMG Photo Shop</span>
+            <img src="/logo.png" alt="NMG Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
+            <span className="font-bold tracking-widest uppercase text-sm text-dark-900">NMG Photo Park</span>
           </div>
           <button onClick={() => setIsMobileOpen(true)} className="p-2 text-dark-800 bg-gold-50 rounded-lg">
             <Menu size={24} strokeWidth={2} />
@@ -158,9 +154,9 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
           </div>
 
           <footer className="mt-8 pt-4 pb-2 border-t border-gold-200 text-[10px] font-bold text-dark-500 flex flex-col sm:flex-row items-center justify-between gap-2 px-2 max-w-7xl mx-auto w-full">
-            <div>© 2026 NMG Photo Shop. All Rights Reserved</div>
+            <div>© 2026 NMG Photo Park. All Rights Reserved</div>
             <div>Powered by <a href="https://www.cenexasystems.com" target="_blank" rel="noopener noreferrer" className="text-dark-900 font-extrabold hover:text-brand-gold hover:underline transition-colors">Cenexa Systems</a> © 2026</div>
-            <div className="uppercase tracking-widest text-brand-gold">NMG PHOTO SHOP</div>
+            <div className="uppercase tracking-widest text-brand-gold">NMG PHOTO PARK</div>
           </footer>
         </div>
       </main>
