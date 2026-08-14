@@ -149,3 +149,31 @@ USING (auth.jwt() ->> 'user_role' = 'admin');
 CREATE POLICY "Staff can see branch expenses"
 ON expenses FOR ALL
 USING (auth.jwt() ->> 'user_role' = 'staff' AND branch_id::text = auth.jwt() ->> 'branch_id');
+
+-- ==========================================
+-- 5. PAYMENTS TABLE (Ledger)
+-- ==========================================
+CREATE TABLE payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
+  amount NUMERIC(10,2) NOT NULL,
+  payment_mode TEXT NOT NULL,
+  recorded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admin can see all payments"
+ON payments FOR ALL
+USING (auth.jwt() ->> 'user_role' = 'admin');
+
+CREATE POLICY "Staff can see branch payments"
+ON payments FOR ALL
+USING (
+  auth.jwt() ->> 'user_role' = 'staff' AND 
+  EXISTS (
+    SELECT 1 FROM orders 
+    WHERE orders.id = payments.order_id 
+    AND orders.branch_id::text = auth.jwt() ->> 'branch_id'
+  )
+);

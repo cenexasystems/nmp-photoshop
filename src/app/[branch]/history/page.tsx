@@ -27,6 +27,7 @@ export interface Order {
   deliveryStatus: string; // "Pending", "Processing", "Ready", "Delivered"
   details: string;
   idNumber: string;
+  discount: number;
   statusLocked?: boolean;
 }
 
@@ -98,6 +99,7 @@ export default function HistoryPage() {
   // Partial Payment Modal State
   const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [discountWriteoff, setDiscountWriteoff] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [recordingPayment, setRecordingPayment] = useState(false);
 
@@ -127,6 +129,7 @@ export default function HistoryPage() {
           deliveryStatus: o.delivery_status || 'Pending',
           details: o.order_items?.map((i: any) => i.details).join(', ') || '',
           idNumber: o.order_items?.[0]?.id_number || '',
+          discount: o.discount || 0,
           statusLocked: o.status_locked
         }));
         setOrders(mappedOrders);
@@ -226,24 +229,32 @@ export default function HistoryPage() {
     setPaymentModalOrder(order);
     const restToPay = order.total - order.amountPaid;
     setPaymentAmount(restToPay.toString());
+    setDiscountWriteoff("");
     setPaymentMode("Cash");
   };
 
   // Submit Payment Record
   const handleConfirmPayment = async () => {
-    if (!paymentModalOrder || !paymentAmount) return;
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) return;
+    if (!paymentModalOrder) return;
+    const amount = parseFloat(paymentAmount) || 0;
+    const writeoff = parseFloat(discountWriteoff) || 0;
+
+    if (amount <= 0 && writeoff <= 0) return;
 
     const restToPay = paymentModalOrder.total - paymentModalOrder.amountPaid;
-    if (amount > restToPay) {
-      alert(`Amount cannot exceed the remaining balance of ₹${restToPay.toLocaleString()}`);
+    const totalCredit = amount + writeoff;
+    
+    if (totalCredit > restToPay) {
+      alert(`Payment + Discount (₹${totalCredit}) cannot exceed remaining balance of ₹${restToPay.toLocaleString()}`);
       return;
     }
 
     setRecordingPayment(true);
     const newAmountPaid = paymentModalOrder.amountPaid + amount;
-    const newStatus = newAmountPaid >= paymentModalOrder.total ? "Paid" : "Partial";
+    const newDiscount = paymentModalOrder.discount + writeoff;
+    const finalTotal = paymentModalOrder.total - writeoff;
+    
+    const newStatus = newAmountPaid >= finalTotal ? "Paid" : "Partial";
     const statusLocked = newStatus === "Paid";
 
     // Determine payment mode
@@ -253,19 +264,23 @@ export default function HistoryPage() {
       .eq('order_id', paymentModalOrder.id);
     
     const existingModes = (existingPayData || []).map(p => p.payment_mode);
-    const allModes = [...new Set([...existingModes, paymentMode])];
-    const finalMode = allModes.length > 1 ? "Mixed" : paymentMode;
+    const allModes = amount > 0 ? [...new Set([...existingModes, paymentMode])] : existingModes;
+    const finalMode = allModes.length > 1 ? "Mixed" : (allModes[0] || paymentMode);
 
-    // Record in payments table
-    await supabase
-      .from('payments')
-      .insert({ order_id: paymentModalOrder.id, amount, payment_mode: paymentMode });
+    // Record in payments table if there's an actual payment amount
+    if (amount > 0) {
+      await supabase
+        .from('payments')
+        .insert({ order_id: paymentModalOrder.id, amount, payment_mode: paymentMode });
+    }
 
     // Update order totals
     const { error: orderError } = await supabase
       .from('orders')
       .update({
         amount_paid: newAmountPaid,
+        total: finalTotal,
+        discount: newDiscount,
         payment_status: newStatus,
         payment_mode: finalMode,
         status_locked: statusLocked
@@ -278,6 +293,8 @@ export default function HistoryPage() {
       const updatedOrder = {
         ...paymentModalOrder,
         amountPaid: newAmountPaid,
+        total: finalTotal,
+        discount: newDiscount,
         status: newStatus,
         paymentMode: finalMode,
         statusLocked
@@ -287,16 +304,22 @@ export default function HistoryPage() {
 
       if (selectedOrder && selectedOrder.id === paymentModalOrder.id) {
         setSelectedOrder(updatedOrder);
-        setOrderPayments(prev => [...prev, {
-          id: Date.now(),
-          order_id: paymentModalOrder.id,
-          amount,
-          payment_mode: paymentMode,
-          recorded_at: new Date().toISOString()
-        }]);
+        if (amount > 0) {
+          setOrderPayments(prev => [...prev, {
+            id: Date.now(),
+            order_id: paymentModalOrder.id,
+            amount,
+            payment_mode: paymentMode,
+            recorded_at: new Date().toISOString()
+          }]);
+        }
       }
 
-      setUpdateFeedback(`✓ Payment of ₹${amount.toLocaleString()} recorded via ${paymentMode} for Order ${paymentModalOrder.id}.`);
+      const msgParts = [];
+      if (amount > 0) msgParts.push(`₹${amount.toLocaleString()} via ${paymentMode}`);
+      if (writeoff > 0) msgParts.push(`₹${writeoff.toLocaleString()} Discount`);
+      
+      setUpdateFeedback(`✓ ${msgParts.join(' + ')} recorded for Order ${paymentModalOrder.id}. ${statusLocked ? 'Bill Closed 🔒' : ''}`);
       setTimeout(() => setUpdateFeedback(null), 4000);
       setPaymentModalOrder(null);
     }
@@ -622,33 +645,51 @@ export default function HistoryPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-1.5">
-                  Payment Amount (₹) <span className="text-red-500">*</span>
-                </label>
-                {paymentModalOrder.status === "Partial" ? (
-                  <div className="w-full bg-gold-50/50 border border-gold-200 rounded-xl px-4 py-2.5 text-base font-black text-dark-400 cursor-not-allowed">
-                    ₹{paymentModalOrder.total - paymentModalOrder.amountPaid} (Final Balance)
+                  <div className="flex gap-3 items-start">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-1.5">
+                        Payment Amount (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const writeoff = parseFloat(discountWriteoff) || 0;
+                          const restToPay = paymentModalOrder.total - paymentModalOrder.amountPaid;
+                          if (val + writeoff > restToPay) {
+                            setPaymentAmount(Math.max(0, restToPay - writeoff).toString());
+                          } else {
+                            setPaymentAmount(e.target.value);
+                          }
+                        }}
+                        placeholder={`Max ₹${paymentModalOrder.total - paymentModalOrder.amountPaid}`}
+                        className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold rounded-xl px-4 py-2.5 text-base font-black text-dark-900 outline-none transition-colors"
+                      />
+                    </div>
+                    
+                    <div className="w-1/3">
+                      <label className="block text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-1.5">
+                        Discount (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={discountWriteoff}
+                        onChange={(e) => {
+                          const writeoff = parseFloat(e.target.value) || 0;
+                          const amount = parseFloat(paymentAmount) || 0;
+                          const restToPay = paymentModalOrder.total - paymentModalOrder.amountPaid;
+                          if (amount + writeoff > restToPay) {
+                            setDiscountWriteoff(Math.max(0, restToPay - amount).toString());
+                          } else {
+                            setDiscountWriteoff(e.target.value);
+                          }
+                        }}
+                        placeholder="0"
+                        className="w-full bg-red-50 border border-red-200 focus:border-red-400 rounded-xl px-4 py-2.5 text-base font-black text-red-700 outline-none transition-colors"
+                      />
+                    </div>
                   </div>
-                ) : (
-                  <input
-                    type="number"
-                    value={paymentAmount}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      const restToPay = paymentModalOrder.total - paymentModalOrder.amountPaid;
-                      if (!isNaN(val) && val > restToPay) {
-                        setPaymentAmount(restToPay.toString());
-                      } else {
-                        setPaymentAmount(e.target.value);
-                      }
-                    }}
-                    placeholder={`Max ₹${paymentModalOrder.total - paymentModalOrder.amountPaid}`}
-                    className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold rounded-xl px-4 py-2.5 text-base font-black text-dark-900 outline-none transition-colors"
-                  />
-                )}
-              </div>
-
               <div>
                 <label className="block text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-1.5">
                   Select Payment Mode <span className="text-red-500">*</span>
@@ -683,11 +724,11 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={handleConfirmPayment}
-                  disabled={recordingPayment || !paymentAmount}
+                  disabled={recordingPayment || (!parseFloat(paymentAmount) && !parseFloat(discountWriteoff))}
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm"
                 >
                   <CheckCircle2 size={15} />
-                  {recordingPayment ? "Saving..." : "Confirm Payment"}
+                  {recordingPayment ? "Saving..." : ((parseFloat(paymentAmount)||0) + (parseFloat(discountWriteoff)||0) >= (paymentModalOrder.total - paymentModalOrder.amountPaid) ? "Record & Close" : "Record")}
                 </button>
               </div>
             </div>

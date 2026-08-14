@@ -55,7 +55,9 @@ export default function Home() {
   const [deliveryStatus, setDeliveryStatus] = useState(DELIVERY_STATUSES[0]);
   const [amountPaid, setAmountPaid] = useState("");
   const [notes, setNotes] = useState("");
-  const [discountPercent, setDiscountPercent] = useState("");
+  const [discountType, setDiscountType] = useState<"percent" | "flat">("percent");
+  const [discountValue, setDiscountValue] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -90,10 +92,15 @@ export default function Home() {
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.amount, 0);
-  const discountAmt = cartTotal * (parseFloat(discountPercent) || 0) / 100;
+  const discountAmt = discountType === "percent"
+    ? cartTotal * (parseFloat(discountValue) || 0) / 100
+    : parseFloat(discountValue) || 0;
   const finalTotal = Math.max(0, cartTotal - discountAmt);
 
   const handleWhatsApp = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     const target = customerPhone.length === 10 ? customerPhone : "7904199050";
     const cameraEmoji = String.fromCodePoint(0x1F4F8);
     const sparkleEmoji = String.fromCodePoint(0x2728);
@@ -120,9 +127,10 @@ export default function Home() {
     });
     
     text += `\n*Payment Status:* ${amountStatus}\n`;
-    if (discountPercent && parseFloat(discountPercent) > 0) {
+    if (discountAmt > 0) {
       text += `*Subtotal:* ₹${cartTotal.toLocaleString()}\n`;
-      text += `*Discount:* ${discountPercent}% (-₹${discountAmt.toLocaleString()})\n`;
+      const discDesc = discountType === "percent" ? `${discountValue}%` : `₹${discountValue} flat`;
+      text += `*Discount:* ${discDesc} (-₹${discountAmt.toLocaleString()})\n`;
     }
     text += `*Total Amount:* ₹${finalTotal.toLocaleString()}\n`;
     text += `*Delivery Status:* ${deliveryStatus}\n`;
@@ -219,7 +227,8 @@ export default function Home() {
     setCustomerDate(new Date().toISOString().split('T')[0]);
     setAmountPaid("");
     setNotes("");
-    setDiscountPercent("");
+    setDiscountValue("");
+    setIsSubmitting(false);
   };
   
   return (
@@ -356,12 +365,12 @@ export default function Home() {
                   {/* Details */}
                   <div className="col-span-1 md:col-span-2">
                     <label className="block text-[10px] font-bold text-dark-500 mb-2 uppercase tracking-widest">Details / Description</label>
-                    <input 
-                      type="text" 
+                    <textarea 
                       value={details}
                       onChange={(e) => setDetails(e.target.value)}
                       placeholder="Enter details..."
-                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
+                      rows={2}
+                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 resize-none"
                     />
                   </div>
 
@@ -525,30 +534,55 @@ export default function Home() {
 
                 <div>
                   <label className="block text-[10px] font-bold text-dark-500 mb-1.5 uppercase tracking-widest">Notes</label>
-                  <input 
-                    type="text" 
+                  <textarea 
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Internal notes..."
-                    className="w-full bg-gold-50 border border-gold-200 rounded-lg px-3 py-2 outline-none focus:border-brand-gold focus:bg-white text-xs font-medium text-dark-900"
+                    rows={2}
+                    className="w-full bg-gold-50 border border-gold-200 rounded-lg px-3 py-2 outline-none focus:border-brand-gold focus:bg-white text-xs font-medium text-dark-900 resize-none"
                   />
                 </div>
               </div>
             </div>
             
             <div className="p-6 bg-gold-50/80 rounded-b-2xl border-t border-gold-200">
-              {/* Discount input */}
+              {/* Discount inputs */}
               <div className="flex items-center gap-2 mb-4">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest whitespace-nowrap">Discount %</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={discountPercent}
-                  onChange={(e) => setDiscountPercent(e.target.value)}
-                  placeholder="0"
-                  className="w-20 bg-white border border-gold-200 focus:border-brand-gold rounded-lg px-2.5 py-1.5 text-xs font-bold text-dark-900 outline-none transition-colors text-center"
-                />
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest whitespace-nowrap">Discount</label>
+                
+                <div className="flex bg-white border border-gold-200 rounded-lg overflow-hidden shrink-0">
+                  <button
+                    onClick={() => { setDiscountType("percent"); setDiscountValue(""); }}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-bold transition-colors",
+                      discountType === "percent" ? "bg-dark-900 text-white" : "text-dark-500 hover:bg-gold-50"
+                    )}
+                  >
+                    %
+                  </button>
+                  <button
+                    onClick={() => { setDiscountType("flat"); setDiscountValue(""); }}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-bold transition-colors",
+                      discountType === "flat" ? "bg-dark-900 text-white" : "text-dark-500 hover:bg-gold-50"
+                    )}
+                  >
+                    ₹
+                  </button>
+                </div>
+
+                <div className="relative flex-1 max-w-[100px]">
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountType === "percent" ? "100" : undefined}
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-white border border-gold-200 focus:border-brand-gold rounded-lg px-3 py-1.5 text-xs font-bold text-dark-900 outline-none transition-colors"
+                  />
+                </div>
+
                 {discountAmt > 0 && (
                   <span className="text-xs font-bold text-red-500 ml-auto">-₹{discountAmt.toLocaleString()}</span>
                 )}
@@ -576,10 +610,17 @@ export default function Home() {
 
               <button 
                 onClick={handleWhatsApp}
-                disabled={cart.length === 0}
-                className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl py-3.5 font-bold text-xs uppercase tracking-widest transition-all shadow-sm shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                disabled={cart.length === 0 || isSubmitting}
+                className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl py-3.5 font-bold text-xs uppercase tracking-widest transition-all shadow-sm shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Send via WhatsApp
+                {isSubmitting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    Processing...
+                  </>
+                ) : (
+                  "Send via WhatsApp"
+                )}
               </button>
             </div>
           </div>
