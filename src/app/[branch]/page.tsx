@@ -243,16 +243,16 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-dark-900 flex items-center gap-2">
-                <span className="w-1.5 h-6 bg-brand-gold rounded-full inline-block"></span>
+                <span className="w-1.5 h-6 bg-gray-900 rounded-full inline-block"></span>
                 Billing Station
               </h2>
               <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Create orders & sync database</p>
             </div>
             
             {/* Mobile Toggle */}
-            <div className="lg:hidden flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gold-200" onClick={() => setIsOnline(!isOnline)}>
+            <div className="lg:hidden flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200" onClick={() => setIsOnline(!isOnline)}>
               <span className="text-[10px] font-bold text-dark-600 uppercase tracking-widest">Offline</span>
-              <div className={cn("w-10 h-5 rounded-full p-0.5 cursor-pointer transition-colors relative", isOnline ? 'bg-green-500' : 'bg-brand-gold')}>
+              <div className={cn("w-10 h-5 rounded-full p-0.5 cursor-pointer transition-colors relative", isOnline ? 'bg-green-500' : 'bg-gray-800')}>
                 <div className={cn("w-4 h-4 bg-white rounded-full transition-transform absolute top-0.5", isOnline ? 'translate-x-5' : 'translate-x-0')}></div>
               </div>
               <span className="text-[10px] font-bold text-dark-600 uppercase tracking-widest">Online</span>
@@ -260,12 +260,12 @@ export default function Home() {
           </div>
 
           {/* Main Left Form Box */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gold-200 flex-1 flex flex-col gap-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex-1 flex flex-col gap-8">
             
             {/* Customer Details Section */}
             <div>
               <h3 className="text-sm font-bold text-dark-900 mb-5 tracking-widest uppercase flex items-center gap-2">
-                <User className="text-brand-gold" size={18} />
+                <User className="text-gray-700" size={18} />
                 Customer Info
               </h3>
               
@@ -277,7 +277,7 @@ export default function Home() {
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="Enter name"
-                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-gray-400 focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
                   />
                 </div>
                 <div>
@@ -288,7 +288,7 @@ export default function Home() {
                     value={customerPhone}
                     onChange={handlePhoneChange}
                     placeholder="10-digit number"
-                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-gray-400 focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
                   />
                 </div>
                 <div>
@@ -297,7 +297,7 @@ export default function Home() {
                     type="date"
                     value={customerDate}
                     onChange={(e) => setCustomerDate(e.target.value)}
-                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-gray-400 focus:bg-white transition-all text-sm font-semibold text-dark-900"
                   />
                 </div>
                 <div>
@@ -307,18 +307,18 @@ export default function Home() {
                     value={staffName}
                     onChange={(e) => setStaffName(e.target.value)}
                     placeholder="Staff name"
-                    className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-gray-400 focus:bg-white transition-all text-sm font-semibold text-dark-900 placeholder-dark-400"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-gold-100"></div>
+            <div className="border-t border-gray-100"></div>
 
             {/* Product Form Section */}
             <div>
               <h3 className="text-sm font-bold text-dark-900 mb-6 tracking-widest uppercase flex items-center gap-2">
-                <Camera className="text-brand-gold" size={18} />
+                <Camera className="text-gray-700" size={18} />
                 Add Product
               </h3>
 
@@ -337,7 +337,7 @@ export default function Home() {
                             "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border",
                             product === p 
                               ? "bg-dark-900 text-white border-dark-900 shadow-sm" 
-                              : "bg-white text-dark-600 border-gold-200 hover:bg-gold-50 hover:border-gold-300"
+                              : "bg-white text-dark-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
                           )}
                         >
                           {p}
@@ -355,7 +355,7 @@ export default function Home() {
                         value={idNumber}
                         onChange={(e) => setIdNumber(e.target.value)}
                         placeholder="Enter Passport ID"
-                        className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-gray-400 focus:bg-white transition-all text-sm font-semibold text-dark-900"
                       />
                     </div>
                   )}
@@ -368,7 +368,7 @@ export default function Home() {
                         type="date" 
                         value={deliveryDate}
                         onChange={(e) => setDeliveryDate(e.target.value)}
-                        className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-gray-400 focus:bg-white transition-all text-sm font-semibold text-dark-900"
                       />
                     </div>
                   )}
@@ -381,7 +381,7 @@ export default function Home() {
                       onChange={(e) => setDetails(e.target.value)}
                       placeholder="Enter details..."
                       rows={2}
-                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-semibold text-dark-900 resize-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-gray-400 focus:bg-white transition-all text-sm font-semibold text-dark-900 resize-none"
                     />
                   </div>
 
@@ -393,7 +393,7 @@ export default function Home() {
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="0.00"
-                      className="w-full bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-gold focus:bg-white transition-all text-sm font-bold text-dark-900"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-gray-400 focus:bg-white transition-all text-sm font-bold text-dark-900"
                     />
                   </div>
 
@@ -417,23 +417,23 @@ export default function Home() {
           
           {/* Status Pills */}
           <div className="flex justify-end hidden lg:flex">
-            <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gold-200 cursor-pointer hover:border-brand-gold/50 transition-colors" onClick={() => setIsOnline(!isOnline)}>
-              <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors", !isOnline ? "text-brand-gold" : "text-dark-400")}>Offline</span>
-              <div className={cn("w-12 h-6 rounded-full p-0.5 transition-colors relative", isOnline ? 'bg-green-500' : 'bg-brand-gold')}>
+            <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200 cursor-pointer hover:border-gray-400 transition-colors" onClick={() => setIsOnline(!isOnline)}>
+              <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors", !isOnline ? "text-gray-800" : "text-dark-400")}>Offline</span>
+              <div className={cn("w-12 h-6 rounded-full p-0.5 transition-colors relative", isOnline ? 'bg-green-500' : 'bg-gray-800')}>
                 <div className={cn("w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5 shadow-sm", isOnline ? 'translate-x-6' : 'translate-x-0')}></div>
               </div>
               <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors", isOnline ? "text-green-500" : "text-dark-400")}>Online</span>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gold-200 flex flex-col sticky top-6">
-            <div className="p-5 border-b border-gold-100 flex items-center justify-between bg-gold-50/50 rounded-t-2xl">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col sticky top-6">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80 rounded-t-2xl">
               <h3 className="text-sm font-bold text-dark-900 tracking-widest uppercase flex items-center gap-2">
-                <CreditCard className="text-brand-gold" size={18} />
+                <CreditCard className="text-gray-700" size={18} />
                 Checkout
               </h3>
               <div className={cn("px-3 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 uppercase tracking-wide",
-                isOnline ? "bg-green-50 text-green-600 border-green-200" : "bg-brand-gold/10 text-brand-gold border-brand-gold/20"
+                isOnline ? "bg-green-50 text-green-600 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"
               )}>
                 {isOnline ? "Online" : "Offline"}
               </div>
@@ -441,7 +441,7 @@ export default function Home() {
 
             <div className="p-5 space-y-5">
               
-              <div className="space-y-3 pb-5 border-b border-gold-100">
+              <div className="space-y-3 pb-5 border-b border-gray-100">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-dark-500 font-bold text-[10px] uppercase tracking-widest">Client</span>
                   <span className="font-bold text-dark-900">{customerName || "-"}</span>
@@ -455,19 +455,19 @@ export default function Home() {
               {/* Cart Items List */}
               <div className="space-y-2 max-h-[300px] overflow-auto pr-1">
                 {cart.length === 0 ? (
-                  <div className="h-28 flex flex-col items-center justify-center border border-dashed border-gold-300 rounded-xl bg-gold-50">
+                  <div className="h-28 flex flex-col items-center justify-center border border-dashed border-gray-300 rounded-xl bg-gray-50">
                     <span className="text-[10px] font-bold text-dark-400 uppercase tracking-widest">Empty Cart</span>
                   </div>
                 ) : (
                   cart.map((item, index) => (
-                    <div key={item.id} className="bg-gold-50 p-3.5 rounded-xl border border-gold-100 flex justify-between gap-4 group">
+                    <div key={item.id} className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 flex justify-between gap-4 group">
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-dark-900 text-xs flex items-center gap-2 uppercase tracking-wide">
                           {item.product}
                         </div>
                         {item.details && <div className="text-xs text-dark-600 mt-1 truncate font-medium">{item.details}</div>}
-                        {item.idNumber && <div className="text-[9px] font-bold text-brand-gold mt-1.5 bg-brand-gold/10 inline-block px-1.5 py-0.5 rounded uppercase tracking-widest">ID: {item.idNumber}</div>}
-                        {item.deliveryDate && <div className="text-[9px] font-bold text-brand-gold mt-1.5 bg-brand-gold/10 inline-block px-1.5 py-0.5 rounded uppercase tracking-widest">Del: {item.deliveryDate}</div>}
+                        {item.idNumber && <div className="text-[9px] font-bold text-gray-800 mt-1.5 bg-gray-200 inline-block px-1.5 py-0.5 rounded uppercase tracking-widest">ID: {item.idNumber}</div>}
+                        {item.deliveryDate && <div className="text-[9px] font-bold text-gray-800 mt-1.5 bg-gray-200 inline-block px-1.5 py-0.5 rounded uppercase tracking-widest">Del: {item.deliveryDate}</div>}
                       </div>
                       <div className="text-right shrink-0 flex flex-col items-end justify-between">
                         <span className="font-black text-dark-900">₹{item.amount}</span>
@@ -480,7 +480,7 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="space-y-4 pt-5 border-t border-gold-100">
+              <div className="space-y-4 pt-5 border-t border-gray-100">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-dark-500 mb-1.5 uppercase tracking-widest">Payment Status</label>
@@ -492,7 +492,7 @@ export default function Home() {
               if (e.target.value === "Completed") setAmountPaid(finalTotal.toString());
               else if (e.target.value === "Pending") setAmountPaid("0");
                       }}
-                      className="w-full bg-gold-50 border border-gold-200 rounded-lg px-2.5 py-2 outline-none focus:border-brand-gold focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-wider"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2 outline-none focus:border-gray-400 focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-wider"
                     >
                       {AMOUNT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -506,7 +506,7 @@ export default function Home() {
                         value={amountPaid}
                         onChange={(e) => setAmountPaid(e.target.value)}
                         placeholder="0.00"
-                        className="w-full bg-gold-50 border border-gold-200 rounded-lg px-2.5 py-2 outline-none focus:border-brand-gold focus:bg-white text-xs font-bold text-dark-900"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2 outline-none focus:border-gray-400 focus:bg-white text-xs font-bold text-dark-900"
                       />
                     </div>
                   )}
@@ -520,8 +520,8 @@ export default function Home() {
                       className={cn(
                         "w-full rounded-lg px-2.5 py-2 outline-none text-xs font-bold uppercase tracking-wider transition-all",
                         amountStatus === "Pending" 
-                          ? "bg-dark-100 border border-dark-200 text-dark-400 cursor-not-allowed opacity-60" 
-                          : "bg-gold-50 border border-gold-200 focus:border-brand-gold focus:bg-white text-dark-900"
+                          ? "bg-gray-100 border border-gray-200 text-dark-400 cursor-not-allowed opacity-60" 
+                          : "bg-gray-50 border border-gray-200 focus:border-gray-400 focus:bg-white text-dark-900"
                       )}
                     >
                       {amountStatus === "Pending" ? (
@@ -536,7 +536,7 @@ export default function Home() {
                     <select 
                       value={deliveryStatus}
                       onChange={(e) => setDeliveryStatus(e.target.value)}
-                      className="w-full bg-gold-50 border border-gold-200 rounded-lg px-2.5 py-2 outline-none focus:border-brand-gold focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-wider"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2 outline-none focus:border-gray-400 focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-wider"
                     >
                       {DELIVERY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -550,23 +550,23 @@ export default function Home() {
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Internal notes..."
                     rows={2}
-                    className="w-full bg-gold-50 border border-gold-200 rounded-lg px-3 py-2 outline-none focus:border-brand-gold focus:bg-white text-xs font-medium text-dark-900 resize-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-gray-400 focus:bg-white text-xs font-medium text-dark-900 resize-none"
                   />
                 </div>
               </div>
             </div>
             
-            <div className="p-6 bg-gold-50/80 rounded-b-2xl border-t border-gold-200">
+            <div className="p-6 bg-gray-50/80 rounded-b-2xl border-t border-gray-200">
               {/* Discount inputs */}
               <div className="flex items-center gap-2 mb-4">
                 <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest whitespace-nowrap">Discount</label>
                 
-                <div className="flex bg-white border border-gold-200 rounded-lg overflow-hidden shrink-0">
+                <div className="flex bg-white border border-gray-200 rounded-lg overflow-hidden shrink-0">
                   <button
                     onClick={() => { setDiscountType("percent"); setDiscountValue(""); }}
                     className={cn(
                       "px-3 py-1.5 text-xs font-bold transition-colors",
-                      discountType === "percent" ? "bg-dark-900 text-white" : "text-dark-500 hover:bg-gold-50"
+                      discountType === "percent" ? "bg-dark-900 text-white" : "text-dark-500 hover:bg-gray-100"
                     )}
                   >
                     %
@@ -575,7 +575,7 @@ export default function Home() {
                     onClick={() => { setDiscountType("flat"); setDiscountValue(""); }}
                     className={cn(
                       "px-3 py-1.5 text-xs font-bold transition-colors",
-                      discountType === "flat" ? "bg-dark-900 text-white" : "text-dark-500 hover:bg-gold-50"
+                      discountType === "flat" ? "bg-dark-900 text-white" : "text-dark-500 hover:bg-gray-100"
                     )}
                   >
                     ₹
@@ -590,7 +590,7 @@ export default function Home() {
                     value={discountValue}
                     onChange={(e) => setDiscountValue(e.target.value)}
                     placeholder="0"
-                    className="w-full bg-white border border-gold-200 focus:border-brand-gold rounded-lg px-3 py-1.5 text-xs font-bold text-dark-900 outline-none transition-colors"
+                    className="w-full bg-white border border-gray-200 focus:border-gray-400 rounded-lg px-3 py-1.5 text-xs font-bold text-dark-900 outline-none transition-colors"
                   />
                 </div>
 
@@ -612,7 +612,7 @@ export default function Home() {
               </div>
               
               {amountStatus === "Partial" && (
-                <div className="flex justify-between items-end mb-5 pt-3 border-t border-gold-200/60">
+                <div className="flex justify-between items-end mb-5 pt-3 border-t border-gray-200/60">
                   <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Remaining Balance</span>
                   <span className="text-lg font-black text-red-600">₹{(finalTotal - (parseFloat(amountPaid) || 0)).toLocaleString()}</span>
                 </div>

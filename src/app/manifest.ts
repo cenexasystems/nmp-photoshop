@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Premium Client billing and invoicing platform",
     start_url: "/",
     display: "standalone",
-    background_color: "#1e1b15", // Dark goldish background
-    theme_color: "#d4af37", // Gold
+    background_color: "#111827", // Dark neutral background
+    theme_color: "#374151", // Charcoal grey
     icons: [
       {
         src: "/icons/icon-192.png",
