@@ -52,10 +52,10 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gold-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-12 h-12 bg-dark-900 rounded-full flex items-center justify-center">
-            <Camera className="w-6 h-6 text-brand-gold" />
+            <Camera className="w-6 h-6 text-white" />
           </div>
           <p className="text-dark-600 font-bold tracking-widest uppercase text-sm">Generating Digital Bill...</p>
         </div>
@@ -65,7 +65,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gold-50 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
         <p className="text-dark-900 font-bold text-xl">Invoice Not Found</p>
         <Link href="/" className="px-6 py-2 bg-dark-900 hover:bg-dark-800 rounded-lg text-white font-bold transition-colors uppercase tracking-widest text-xs">
           Return Home
@@ -86,7 +86,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
   const restToPay = Math.max(0, totalAmount - amountPaid);
 
   return (
-    <div className="min-h-screen bg-gold-50 text-dark-900 font-sans py-12 px-4 print:p-0 print:bg-white flex flex-col items-center">
+    <div className="min-h-screen bg-gray-50 text-dark-900 font-sans py-12 px-4 print:p-0 print:bg-white flex flex-col items-center">
       <style>{`
         @media print {
           @page {
@@ -113,7 +113,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         <div className="flex items-center gap-3">
           <button 
             onClick={handleCopyLink}
-            className="flex items-center gap-2 bg-white hover:bg-gold-50 text-dark-700 hover:text-dark-900 font-bold text-xs uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm border border-gold-200 transition-colors cursor-pointer"
+            className="flex items-center gap-2 bg-white hover:bg-gray-100 text-dark-700 hover:text-dark-900 font-bold text-xs uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm border border-gray-200 transition-colors cursor-pointer"
           >
             {copied ? (
               <>
@@ -127,7 +127,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
           </button>
           <button 
             onClick={handlePrint}
-            className="flex items-center gap-2 bg-dark-900 hover:bg-dark-800 text-brand-gold font-bold text-xs uppercase tracking-wider px-5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer"
+            className="flex items-center gap-2 bg-dark-900 hover:bg-dark-800 text-white font-bold text-xs uppercase tracking-wider px-5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer"
           >
             <Printer className="w-4 h-4" /> Download PDF / Print
           </button>
@@ -135,28 +135,28 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
       </div>
 
       {/* The Invoice Document */}
-      <div className="w-full max-w-3xl bg-white border border-gold-200 rounded-2xl shadow-xl print:shadow-none print:border-none print:rounded-none overflow-hidden">
+      <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-2xl shadow-xl print:shadow-none print:border-none print:rounded-none overflow-hidden">
         
         {/* Header Section */}
-        <div className="bg-gold-50/30 border-b border-gold-200 p-8 sm:p-12 print:p-4 flex flex-col items-center text-center">
+        <div className="bg-gray-50/80 border-b border-gray-200 p-8 sm:p-12 print:p-4 flex flex-col items-center text-center">
           <img src="/logo.png" alt="NMG Photo Park" className="w-16 h-16 object-contain mb-3" />
           <h1 className="text-3xl font-black text-dark-900 tracking-tight">NMG Photo Park</h1>
           <p className="text-xs text-dark-500 font-bold tracking-wider mt-1 mb-4">INVOICE #{order.id}</p>
           
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-dark-600 font-semibold">
             <div className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-gray-600 shrink-0" />
               <span>Branch: {order.branch_id ? order.branch_id.replace('-', ' ').toUpperCase() : 'CHENNAI MAIN'}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Phone className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+              <Phone className="w-3.5 h-3.5 text-gray-600 shrink-0" />
               <span>+91 99999 99999</span>
             </div>
           </div>
         </div>
 
         {/* Invoice Meta Data */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 p-8 sm:p-12 print:p-4 print:gap-4 border-b border-gold-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 p-8 sm:p-12 print:p-4 print:gap-4 border-b border-gray-100">
           <div>
             <h3 className="text-[10px] font-bold text-dark-400 uppercase tracking-[0.2em] mb-3">Billed To</h3>
             <p className="text-base font-bold text-dark-900">{order.customer_name || "Walk-in Customer"}</p>
@@ -164,7 +164,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
               <p className="text-sm text-dark-600 font-semibold mt-1">+91 {order.customer_phone}</p>
             )}
             {order.source && (
-              <span className="inline-block mt-2 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-gold-100 text-dark-800">
+              <span className="inline-block mt-2 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 text-dark-800">
                 Source: {order.source}
               </span>
             )}
@@ -196,12 +196,12 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         <div className="p-8 sm:p-12 print:py-2 print:px-4">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b-2 border-gold-200">
+              <tr className="border-b-2 border-gray-200">
                 <th className="py-4 text-[11px] font-bold text-dark-400 uppercase tracking-wider">Item Description</th>
                 <th className="py-4 text-[11px] font-bold text-dark-400 uppercase tracking-wider text-right">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gold-50">
+            <tbody className="divide-y divide-gray-100">
               {items.map((item: any, index: number) => {
                 return (
                   <tr key={index} className="group">
@@ -247,7 +247,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         )}
 
         {/* Totals Section */}
-        <div className="bg-gold-50/30 border-t border-gold-200 p-8 sm:p-12 print:p-4 flex justify-end">
+        <div className="bg-gray-50/80 border-t border-gray-200 p-8 sm:p-12 print:p-4 flex justify-end">
             <div className="w-full sm:w-1/2 space-y-3">
               {(discountAmount > 0) && (
                 <div className="flex justify-between items-center text-sm">
@@ -265,9 +265,9 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                 </div>
               )}
 
-              <div className="border-t border-gold-200 pt-4 mt-2 flex justify-between items-center">
+              <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between items-center">
                 <span className="text-sm font-black text-dark-900 uppercase tracking-widest">Grand Total</span>
-                <span className="text-2xl font-black text-brand-gold drop-shadow-sm">₹{totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                <span className="text-2xl font-black text-dark-900 drop-shadow-sm">₹{totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
               </div>
               <div className="flex justify-between items-center text-sm pt-2">
                 <span className="text-dark-400 font-bold uppercase tracking-wider">Amount Paid</span>
@@ -283,9 +283,9 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         </div>
         
         {/* Footer */}
-        <div className="border-t border-gold-100 p-6 print:p-2 text-center bg-gold-50/30 flex flex-col items-center justify-center gap-1.5">
+        <div className="border-t border-gray-100 p-6 print:p-2 text-center bg-gray-50/80 flex flex-col items-center justify-center gap-1.5">
           <p className="text-xs font-bold text-dark-900 tracking-wider uppercase">Thank you for choosing NMG Photo Park!</p>
-          <p className="text-[9px] font-bold text-brand-gold uppercase tracking-[0.15em]">NMG Photo Park POS</p>
+          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-[0.15em]">NMG Photo Park POS</p>
         </div>
 
       </div>

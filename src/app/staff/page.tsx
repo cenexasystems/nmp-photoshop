@@ -24,7 +24,7 @@ export default function BranchSelectionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f5ee] flex flex-col items-center justify-center p-6 selection:bg-brand-gold/30">
+    <div className="min-h-screen bg-[#f3f4f6] flex flex-col items-center justify-center p-6 selection:bg-gray-200">
       
       <div className="w-full max-w-2xl text-center mb-10">
         <img src="/logo.png" alt="NMG Logo" className="w-16 h-16 object-contain mx-auto rounded-2xl shadow-lg mb-6" />
@@ -41,14 +41,14 @@ export default function BranchSelectionPage() {
           <button
             key={branch.id}
             onClick={() => selectBranch(branch.id)}
-            className="bg-white p-8 rounded-3xl shadow-sm border border-gold-200 flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-1 hover:shadow-xl hover:border-brand-gold/50 group"
+            className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-1 hover:shadow-xl hover:border-gray-400 group"
           >
-            <div className="w-16 h-16 rounded-full bg-gold-50 flex items-center justify-center group-hover:bg-brand-gold/10 transition-colors">
-              <Store className="text-brand-gold" size={28} strokeWidth={1.5} />
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-dark-900 group-hover:text-white transition-colors">
+              <Store className="text-gray-700 group-hover:text-white transition-colors" size={28} strokeWidth={1.5} />
             </div>
             
             <div className="text-center">
-              <h2 className="text-lg font-bold text-dark-900 tracking-widest uppercase mb-1 group-hover:text-brand-gold transition-colors">
+              <h2 className="text-lg font-bold text-dark-900 tracking-widest uppercase mb-1 group-hover:text-dark-900 transition-colors">
                 {branch.name}
               </h2>
               <p className="text-[10px] font-bold text-dark-400 uppercase tracking-widest">
@@ -56,7 +56,7 @@ export default function BranchSelectionPage() {
               </p>
             </div>
 
-            <div className="mt-4 px-6 py-2 rounded-full bg-gold-50 text-[9px] font-bold text-dark-600 uppercase tracking-widest group-hover:bg-brand-gold group-hover:text-white transition-all">
+            <div className="mt-4 px-6 py-2 rounded-full bg-gray-100 text-[9px] font-bold text-dark-600 uppercase tracking-widest group-hover:bg-dark-900 group-hover:text-white transition-all">
               Enter POS →
             </div>
           </button>
@@ -66,9 +66,9 @@ export default function BranchSelectionPage() {
       <div className="mt-12 text-center">
         <Link 
           href="/download"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-gold-200 bg-white shadow-sm text-[10px] font-bold uppercase tracking-widest text-dark-600 transition-all hover:bg-gold-50 hover:-translate-y-0.5 hover:shadow-md"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-gray-200 bg-white shadow-sm text-[10px] font-bold uppercase tracking-widest text-dark-600 transition-all hover:bg-gray-100 hover:-translate-y-0.5 hover:shadow-md"
         >
-          <Download size={14} className="text-brand-gold" /> Install Desktop / Mobile App
+          <Download size={14} className="text-gray-700" /> Install Desktop / Mobile App
         </Link>
       </div>
       

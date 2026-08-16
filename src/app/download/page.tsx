@@ -83,20 +83,20 @@ export default function DownloadPage() {
 
   if (!isClient) {
     return (
-      <div className="min-h-screen bg-[#f8f5ee] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center">
         <div className="text-dark-400 font-bold uppercase tracking-widest text-xs">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f5ee] text-dark-900 flex flex-col p-6 md:p-12 selection:bg-brand-gold/20">
+    <div className="min-h-screen bg-[#f3f4f6] text-dark-900 flex flex-col p-6 md:p-12 selection:bg-gray-200">
       
       {/* Header Navigation */}
       <div className="max-w-4xl w-full mx-auto mb-8 flex justify-between items-center">
         <Link 
           href="/" 
-          className="flex items-center gap-2 px-4 py-2 rounded-full border border-gold-200 bg-white/50 backdrop-blur-sm text-xs font-bold uppercase tracking-widest text-dark-600 transition-all hover:bg-gold-50 hover:-translate-x-0.5"
+          className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white/50 backdrop-blur-sm text-xs font-bold uppercase tracking-widest text-dark-600 transition-all hover:bg-gray-100 hover:-translate-x-0.5"
         >
           <ArrowLeft size={14} /> Back to POS
         </Link>
@@ -106,7 +106,7 @@ export default function DownloadPage() {
       </div>
 
       {/* Main Container */}
-      <main className="max-w-4xl w-full mx-auto bg-white border border-gold-100 rounded-3xl p-8 md:p-12 shadow-xl flex flex-col md:flex-row gap-12 items-center">
+      <main className="max-w-4xl w-full mx-auto bg-white border border-gray-200 rounded-3xl p-8 md:p-12 shadow-xl flex flex-col md:flex-row gap-12 items-center">
         
         {/* Left Side: App Branding & Action */}
         <div className="flex-1 text-center md:text-left flex flex-col items-center md:items-start">
@@ -132,7 +132,7 @@ export default function DownloadPage() {
           ) : isInstallable ? (
             <button
               onClick={triggerInstall}
-              className="flex items-center justify-center gap-3 px-8 py-5 bg-brand-gold hover:bg-gold-600 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-lg transition-all w-full max-w-sm hover:-translate-y-0.5"
+              className="flex items-center justify-center gap-3 px-8 py-5 bg-dark-900 hover:bg-dark-800 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-lg transition-all w-full max-w-sm hover:-translate-y-0.5"
             >
               <Download size={18} /> Install Application
             </button>
@@ -140,7 +140,7 @@ export default function DownloadPage() {
             <div className="flex flex-col gap-2 w-full max-w-sm">
               <button
                 disabled
-                className="flex items-center justify-center gap-3 px-8 py-5 bg-gold-100 text-dark-400 rounded-2xl font-bold uppercase tracking-widest text-xs cursor-not-allowed w-full"
+                className="flex items-center justify-center gap-3 px-8 py-5 bg-gray-100 text-dark-400 rounded-2xl font-bold uppercase tracking-widest text-xs cursor-not-allowed w-full"
               >
                 <Download size={18} /> Install from Browser Bar
               </button>
@@ -153,18 +153,18 @@ export default function DownloadPage() {
         </div>
 
         {/* Right Side: Install Instructions */}
-        <div className="flex-1 w-full bg-gold-50/50 border border-gold-100 rounded-2xl p-6 md:p-8 flex flex-col">
+        <div className="flex-1 w-full bg-gray-50/80 border border-gray-200 rounded-2xl p-6 md:p-8 flex flex-col">
           <h2 className="text-xs font-bold uppercase tracking-widest text-dark-500 mb-6">
             Installation Guides
           </h2>
 
           {/* Tab Selector */}
-          <div className="flex border-b border-gold-200 mb-6">
+          <div className="flex border-b border-gray-200 mb-6">
             <button
               onClick={() => setActiveTab("desktop")}
               className={`flex items-center gap-2 pb-3 px-1 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
                 activeTab === "desktop"
-                  ? "border-brand-gold text-brand-gold"
+                  ? "border-dark-900 text-dark-900"
                   : "border-transparent text-dark-400 hover:text-dark-600"
               }`}
             >
@@ -174,7 +174,7 @@ export default function DownloadPage() {
               onClick={() => setActiveTab("android")}
               className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
                 activeTab === "android"
-                  ? "border-brand-gold text-brand-gold"
+                  ? "border-dark-900 text-dark-900"
                   : "border-transparent text-dark-400 hover:text-dark-600"
               }`}
             >
@@ -184,7 +184,7 @@ export default function DownloadPage() {
               onClick={() => setActiveTab("ios")}
               className={`flex items-center gap-2 pb-3 px-1 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
                 activeTab === "ios"
-                  ? "border-brand-gold text-brand-gold"
+                  ? "border-dark-900 text-dark-900"
                   : "border-transparent text-dark-400 hover:text-dark-600"
               }`}
             >
@@ -202,7 +202,7 @@ export default function DownloadPage() {
                     Open this page in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>.
                   </li>
                   <li>
-                    Look at the right side of the address bar for the install icon <Download size={14} className="inline mx-1 text-brand-gold" />.
+                    Look at the right side of the address bar for the install icon <Download size={14} className="inline mx-1 text-dark-900" />.
                   </li>
                   <li>
                     Click the install icon and choose <strong>Install</strong> when prompted.
@@ -242,10 +242,10 @@ export default function DownloadPage() {
                     Open this page in the native <strong>Safari</strong> browser.
                   </li>
                   <li>
-                    Tap the <strong>Share</strong> button <Share2 size={14} className="inline mx-1 text-brand-gold" /> in the bottom navigation toolbar (iPad top bar).
+                    Tap the <strong>Share</strong> button <Share2 size={14} className="inline mx-1 text-dark-900" /> in the bottom navigation toolbar (iPad top bar).
                   </li>
                   <li>
-                    Scroll down and tap <strong>Add to Home Screen</strong> <PlusSquare size={14} className="inline mx-1 text-brand-gold" />.
+                    Scroll down and tap <strong>Add to Home Screen</strong> <PlusSquare size={14} className="inline mx-1 text-dark-900" />.
                   </li>
                   <li>
                     Verify the name <strong>NMG Photo Park</strong> and tap <strong>Add</strong> in the top-right corner.
