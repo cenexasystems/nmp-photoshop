@@ -386,7 +386,7 @@ export default function HistoryPage() {
         order.phone.includes(globalSearch) ||
         order.product.toLowerCase().includes(globalSearch.toLowerCase());
 
-      // Status Filter
+      // Payment Status Filter
       const matchesStatus =
         statusFilter === "ALL STATUS" || order.status.toUpperCase() === statusFilter;
 
@@ -395,10 +395,15 @@ export default function HistoryPage() {
       if (fromDate && order.date < fromDate) matchesDate = false;
       if (toDate && order.date > toDate) matchesDate = false;
 
-      // Delivery Status Filter
+      // Delivery / Order Status Filter
+      const statusLower = (order.deliveryStatus || "").toLowerCase();
+      const filterLower = deliveryFilter.toLowerCase();
       const matchesDelivery =
         deliveryFilter === "ALL" ||
-        (order.deliveryStatus || "").toLowerCase() === deliveryFilter.toLowerCase();
+        statusLower === filterLower ||
+        (filterLower === "ready" && statusLower.includes("ready")) ||
+        (filterLower === "pending" && statusLower.includes("pending")) ||
+        (filterLower === "processing" && statusLower.includes("processing"));
 
       return matchesSearch && matchesStatus && matchesDate && matchesDelivery;
     });
@@ -412,7 +417,7 @@ export default function HistoryPage() {
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-dark-900 flex items-center gap-2">
-              <span className="w-1.5 h-6 bg-brand-gold rounded-full inline-block"></span>
+              <span className="w-1.5 h-6 bg-gray-900 rounded-full inline-block"></span>
               Order History
             </h2>
             <p className="text-sm text-dark-500 mt-1 pl-3.5 font-medium">Manage and track past invoices for NMG Photo Park</p>
@@ -422,7 +427,7 @@ export default function HistoryPage() {
             <div className="flex flex-wrap items-center justify-end gap-2 w-full">
               
               {/* Date Pickers */}
-              <div className="flex items-center gap-2 bg-white border border-gold-200 rounded-full px-4 py-1.5 shadow-sm">
+              <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-1.5 shadow-sm">
                 <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">From</span>
                 <input 
                   type="date"
@@ -447,7 +452,7 @@ export default function HistoryPage() {
               </div>
 
               {/* Period Buttons */}
-              <div className="flex items-center bg-white rounded-full p-1 border border-gold-200 shadow-sm">
+              <div className="flex items-center bg-white rounded-full p-1 border border-gray-200 shadow-sm">
                 <span className="text-[10px] font-bold text-dark-500 px-3 uppercase tracking-widest hidden sm:inline">Period</span>
                 {["ALL TIME", "TODAY", "THIS WEEK", "THIS MONTH", "THIS YEAR"].map(p => (
                   <button 
@@ -455,7 +460,7 @@ export default function HistoryPage() {
                     onClick={() => handlePeriodChange(p)}
                     className={cn(
                       "px-3 py-1.5 rounded-full text-[10px] font-bold transition-all uppercase tracking-widest",
-                      period === p ? "bg-brand-gold text-white shadow-sm" : "text-dark-600 hover:bg-gold-50"
+                      period === p ? "bg-gray-900 text-white shadow-sm" : "text-dark-600 hover:bg-gray-100"
                     )}
                   >
                     {p}
@@ -468,7 +473,7 @@ export default function HistoryPage() {
             {/* Export CSV Button */}
             <button 
               onClick={handleExportCSV}
-              className="flex items-center gap-2 px-5 py-2 bg-white hover:bg-gold-50 text-dark-900 border border-gold-200 rounded-full text-[10px] font-bold uppercase tracking-widest transition-colors shadow-sm cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 bg-white hover:bg-gray-100 text-dark-900 border border-gray-200 rounded-full text-[10px] font-bold uppercase tracking-widest transition-colors shadow-sm cursor-pointer"
             >
               <Download size={14} />
               Export CSV
@@ -485,33 +490,52 @@ export default function HistoryPage() {
         )}
 
         {/* Global Search & Filter */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gold-200 flex flex-wrap gap-4 items-center">
-          <div className="flex-1 w-full md:w-auto relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-gold" size={18} />
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex-1 min-w-[260px] relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
             <input 
               type="text" 
               value={globalSearch}
               onChange={(e) => setGlobalSearch(e.target.value)}
               placeholder="Search by Order ID, Customer Name, Phone, or Product..." 
-              className="w-full bg-gold-50 border border-gold-200 rounded-xl pl-12 pr-4 py-3 outline-none focus:border-brand-gold focus:bg-white text-sm font-medium text-dark-900 placeholder-dark-400 transition-colors" 
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-4 py-3 outline-none focus:border-gray-400 focus:bg-white text-sm font-medium text-dark-900 placeholder-dark-400 transition-colors" 
             />
           </div>
-          <div className="w-full md:w-auto">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full md:w-48 bg-gold-50 border border-gold-200 rounded-xl px-4 py-3 outline-none focus:border-brand-gold focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-widest transition-colors cursor-pointer"
-            >
-              <option value="ALL STATUS">All Payment Status</option>
-              <option value="PAID">Paid (Completed)</option>
-              <option value="PARTIAL">Partial</option>
-              <option value="UNPAID">Unpaid (Pending)</option>
-            </select>
+
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {/* Order / Delivery Status Filter Dropdown */}
+            <div className="w-full sm:w-auto">
+              <select
+                value={deliveryFilter}
+                onChange={(e) => setDeliveryFilter(e.target.value)}
+                className="w-full sm:min-w-[215px] bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-8 py-3 outline-none focus:border-gray-400 focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-wide transition-colors cursor-pointer"
+              >
+                <option value="ALL">All Order Status</option>
+                <option value="Pending">Pending Order</option>
+                <option value="Processing">Processing</option>
+                <option value="Ready">Ready for Pickup</option>
+                <option value="Delivered">Delivered</option>
+              </select>
+            </div>
+
+            {/* Payment Status Filter Dropdown */}
+            <div className="w-full sm:w-auto">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full sm:min-w-[225px] bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-8 py-3 outline-none focus:border-gray-400 focus:bg-white text-xs font-bold text-dark-900 uppercase tracking-wide transition-colors cursor-pointer"
+              >
+                <option value="ALL STATUS">All Payment Status</option>
+                <option value="PAID">Paid (Completed)</option>
+                <option value="PARTIAL">Partial</option>
+                <option value="UNPAID">Unpaid (Pending)</option>
+              </select>
+            </div>
           </div>
         </div>
 
         {/* Delivery Status Filter Pills */}
-        <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gold-200 flex flex-wrap items-center gap-2">
+        <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-200 flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest pr-1">Order Status:</span>
           {[
             { label: "All Orders", value: "ALL" },
@@ -531,7 +555,7 @@ export default function HistoryPage() {
                     : value === "Processing" ? "bg-blue-600 text-white border-blue-600"
                     : value === "Ready" ? "bg-emerald-600 text-white border-emerald-600"
                     : "bg-purple-600 text-white border-purple-600"
-                  : "bg-white text-dark-600 border-gold-200 hover:bg-gold-50"
+                  : "bg-white text-dark-600 border-gray-200 hover:bg-gray-100"
               )}
             >
               {label}
@@ -545,11 +569,11 @@ export default function HistoryPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gold-200 overflow-hidden flex flex-col">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
-                <tr className="bg-gold-50/50 border-b border-gold-200">
+                <tr className="bg-gray-50/80 border-b border-gray-200">
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Date / Order ID</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Customer</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest">Product</th>
@@ -559,14 +583,14 @@ export default function HistoryPage() {
                   <th className="px-6 py-4 text-[10px] font-bold text-dark-500 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gold-100">
+              <tbody className="divide-y divide-gray-100">
                 {filteredOrders.length > 0 ? (
                   filteredOrders.map((order) => {
                     const isEditable = !order.statusLocked && (order.status === "Unpaid" || order.status === "Pending" || order.status === "Partial");
                     const restToPay = Math.max(0, order.total - order.amountPaid);
                     
                     return (
-                      <tr key={order.id} className="hover:bg-gold-50/30 transition-colors">
+                      <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="text-[10px] font-bold text-dark-400 mb-1 tracking-widest">{order.date}</div>
                           <span className="text-sm font-bold text-dark-900">{order.id}</span>
@@ -588,8 +612,8 @@ export default function HistoryPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1 items-start">
-                            <span className="px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-gold-100 text-dark-900 border border-gold-200 flex items-center gap-1">
-                              <Banknote size={12} className="text-brand-gold" />
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-gray-100 text-dark-900 border border-gray-200 flex items-center gap-1">
+                              <Banknote size={12} className="text-gray-600" />
                               {order.paymentMode || 'Cash'}
                             </span>
                             <span className={cn("text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex items-center gap-1",
@@ -611,7 +635,7 @@ export default function HistoryPage() {
                               order.deliveryStatus === "Delivered" ? "bg-emerald-50 text-emerald-800 border-emerald-300" :
                               order.deliveryStatus === "Ready" ? "bg-blue-50 text-blue-800 border-blue-300" :
                               order.deliveryStatus === "Processing" ? "bg-purple-50 text-purple-800 border-purple-300" :
-                              "bg-gold-50 text-dark-700 border-gold-200"
+                              "bg-gray-50 text-dark-700 border-gray-200"
                             )}
                           >
                             <option value="Pending">Pending</option>
@@ -634,7 +658,7 @@ export default function HistoryPage() {
 
                             <button 
                               onClick={() => setSelectedOrder(order)}
-                              className="text-[10px] font-bold text-brand-gold hover:text-dark-900 uppercase tracking-widest transition-colors ml-1"
+                              className="text-[10px] font-bold text-gray-700 hover:text-dark-900 uppercase tracking-widest transition-colors ml-1"
                             >
                               Details →
                             </button>
@@ -659,8 +683,8 @@ export default function HistoryPage() {
       {/* Partial Payment Record Modal */}
       {paymentModalOrder && (
         <div className="fixed inset-0 bg-dark-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-gold-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-5 border-b border-gold-100 bg-gold-50/50">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/80">
               <h3 className="text-sm font-bold text-dark-900 tracking-widest uppercase flex items-center gap-2">
                 <Banknote className="text-emerald-600" size={18} />
                 Record Partial / Full Payment
@@ -674,13 +698,13 @@ export default function HistoryPage() {
             </div>
             
             <div className="p-6 space-y-4">
-              <div className="bg-gold-50 rounded-xl p-3.5 border border-gold-200 space-y-1">
+              <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-200 space-y-1">
                 <div className="text-xs font-bold text-dark-900">{paymentModalOrder.id} • {paymentModalOrder.customer}</div>
                 <div className="flex justify-between text-xs text-dark-600">
                   <span>Total Amount: <strong>₹{paymentModalOrder.total.toLocaleString()}</strong></span>
                   <span>Already Paid: <strong className="text-emerald-700">₹{paymentModalOrder.amountPaid.toLocaleString()}</strong></span>
                 </div>
-                <div className="text-xs font-black text-red-600 pt-1 border-t border-gold-200 mt-1">
+                <div className="text-xs font-black text-red-600 pt-1 border-t border-gray-200 mt-1">
                   Remaining Balance: ₹{(paymentModalOrder.total - paymentModalOrder.amountPaid).toLocaleString()}
                 </div>
               </div>
@@ -704,7 +728,7 @@ export default function HistoryPage() {
                           }
                         }}
                         placeholder={`Max ₹${paymentModalOrder.total - paymentModalOrder.amountPaid}`}
-                        className="w-full bg-gold-50 border border-gold-200 focus:border-brand-gold rounded-xl px-4 py-2.5 text-base font-black text-dark-900 outline-none transition-colors"
+                        className="w-full bg-gray-50 border border-gray-200 focus:border-gray-400 rounded-xl px-4 py-2.5 text-base font-black text-dark-900 outline-none transition-colors"
                       />
                     </div>
                     
@@ -744,7 +768,7 @@ export default function HistoryPage() {
                         "py-2 px-3 rounded-xl text-xs font-bold uppercase transition-all border text-center cursor-pointer",
                         paymentMode === mode 
                           ? "bg-dark-900 text-white border-dark-900 shadow-sm scale-[1.02]" 
-                          : "bg-white text-dark-700 border-gold-200 hover:bg-gold-50"
+                          : "bg-white text-dark-700 border-gray-200 hover:bg-gray-100"
                       )}
                     >
                       {mode}
@@ -757,7 +781,7 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={() => setPaymentModalOrder(null)}
-                  className="px-4 py-2 bg-gold-100 hover:bg-gold-200 text-dark-800 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-dark-800 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
                 >
                   Cancel
                 </button>
@@ -779,19 +803,19 @@ export default function HistoryPage() {
       {/* Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-dark-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-gold-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-5 border-b border-gold-100 bg-gold-50/50 shrink-0">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/80 shrink-0">
               <div className="flex items-center gap-3">
                 <h3 className="text-sm font-bold text-dark-900 tracking-widest uppercase flex items-center gap-2">
-                  <span className="w-1.5 h-4 bg-brand-gold rounded-full"></span>
+                  <span className="w-1.5 h-4 bg-gray-900 rounded-full"></span>
                   Order Details
                 </h3>
                 <Link
                   href={`/invoice/${selectedOrder.id}`}
                   target="_blank"
-                  className="text-[10px] font-bold text-brand-gold hover:text-dark-900 uppercase tracking-widest flex items-center gap-1 bg-gold-100/80 px-2.5 py-1 rounded-full border border-gold-200 transition-colors"
+                  className="text-[10px] font-bold text-gray-700 hover:text-dark-900 uppercase tracking-widest flex items-center gap-1 bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200 transition-colors"
                 >
                   Print Invoice <ExternalLink size={11} />
                 </Link>
@@ -805,7 +829,7 @@ export default function HistoryPage() {
             </div>
             
             <div className="p-6 space-y-5 overflow-y-auto">
-              <div className="flex justify-between items-start pb-4 border-b border-gold-100">
+              <div className="flex justify-between items-start pb-4 border-b border-gray-100">
                 <div>
                   <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Order ID</div>
                   <div className="font-bold text-dark-900 text-sm">{selectedOrder.id}</div>
@@ -816,7 +840,7 @@ export default function HistoryPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gold-100">
+              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
                 <div>
                   <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Customer</div>
                   <div className="font-bold text-dark-900 text-sm">{selectedOrder.customer}</div>
@@ -827,11 +851,11 @@ export default function HistoryPage() {
                 </div>
               </div>
 
-              <div className="bg-gold-50 rounded-xl p-4 border border-gold-100">
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Product</div>
-                    <div className="font-bold text-brand-gold uppercase text-sm">{selectedOrder.product}</div>
+                    <div className="font-bold text-gray-800 uppercase text-sm">{selectedOrder.product}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1">Total Amount</div>
@@ -859,7 +883,7 @@ export default function HistoryPage() {
               </div>
 
               {/* Status Controls */}
-              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gold-100">
+              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
                 <div>
                   <div className="text-[10px] font-bold text-dark-400 uppercase tracking-widest mb-1.5">Payment Status</div>
                   <div className="font-extrabold text-xs uppercase flex items-center gap-1.5">
@@ -878,7 +902,7 @@ export default function HistoryPage() {
                   <select
                     value={selectedOrder.deliveryStatus || 'Pending'}
                     onChange={(e) => handleDeliveryStatusUpdate(selectedOrder.id, e.target.value)}
-                    className="w-full text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg border border-gold-300 bg-gold-50 text-dark-900 focus:outline-none cursor-pointer"
+                    className="w-full text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg border border-gray-300 bg-gray-50 text-dark-900 focus:outline-none cursor-pointer"
                   >
                     <option value="Pending">Pending</option>
                     <option value="Processing">Processing</option>
@@ -945,8 +969,8 @@ export default function HistoryPage() {
 
               {/* Expenses linked to order */}
               {orderExpenses.length > 0 && (
-                <div className="pt-2 border-t border-gold-100">
-                  <div className="text-[10px] font-bold text-brand-gold uppercase tracking-widest mb-2">Order Expenses</div>
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="text-[10px] font-bold text-gray-700 uppercase tracking-widest mb-2">Order Expenses</div>
                   <div className="space-y-2">
                     {orderExpenses.map((exp: any) => (
                       <div key={exp.id} className="flex justify-between items-center text-sm p-3 bg-red-50/50 rounded-lg border border-red-100">

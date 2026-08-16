@@ -93,8 +93,8 @@ export default function AnalyticsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [payments, setPayments] = useState<PaymentLog[]>([]);
-  const [period, setPeriod] = useState("This Month");
-  const [tab, setTab] = useState("BRANCH ANALYTICS");
+  const [period, setPeriod] = useState("All Time");
+  const [tab, setTab] = useState("REVENUE");
   const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -162,12 +162,15 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     loadData();
-    handlePeriodChange("This Month");
+    handlePeriodChange("All Time");
   }, []);
 
   const handlePeriodChange = (p: string) => {
     setPeriod(p);
-    if (p === "Today") {
+    if (p === "All Time") {
+      setFromDate("");
+      setToDate("");
+    } else if (p === "Today") {
       setFromDate(todayStr);
       setToDate(todayStr);
     } else if (p === "This Week") {
@@ -201,22 +204,23 @@ export default function AnalyticsPage() {
     const set = new Set<string>();
     orders.forEach(o => { if (o.branchId) set.add(o.branchId); });
     expenses.forEach(e => { if (e.branch_id) set.add(e.branch_id); });
-    // Default fallback branches
-    set.add("chennai-main");
-    set.add("bangalore-hub");
-    set.add("mumbai-central");
+    if (set.size === 0) {
+      set.add("chennai-main");
+      set.add("bangalore-hub");
+      set.add("mumbai-central");
+    }
     return Array.from(set);
   }, [orders, expenses]);
 
   // Branch Filtered Orders & Expenses
   const branchOrders = useMemo(() => {
     if (selectedBranch === "ALL") return orders;
-    return orders.filter(o => o.branchId === selectedBranch);
+    return orders.filter(o => (o.branchId || "").toLowerCase() === selectedBranch.toLowerCase());
   }, [orders, selectedBranch]);
 
   const branchExpenses = useMemo(() => {
     if (selectedBranch === "ALL") return expenses;
-    return expenses.filter(e => e.branch_id === selectedBranch);
+    return expenses.filter(e => (e.branch_id || "").toLowerCase() === selectedBranch.toLowerCase());
   }, [expenses, selectedBranch]);
 
   // Filter orders by date range
@@ -333,14 +337,66 @@ export default function AnalyticsPage() {
       .reduce((sum, e) => sum + Number(e.amount), 0);
   }, [monthlyExpensesList]);
 
+  // FILTERED PERIOD CALCULATIONS
+  const periodCompletedOrders = useMemo(() => {
+    return dateFilteredOrders.filter(o => o.status === "Paid" || (o.amountPaid || 0) > 0);
+  }, [dateFilteredOrders]);
+
+  const periodCashSales = useMemo(() => {
+    return periodCompletedOrders.reduce((sum, o) => {
+      if ((o.paymentMode || "").toLowerCase().includes("cash")) {
+        return sum + (o.amountPaid || o.total);
+      }
+      return sum;
+    }, 0);
+  }, [periodCompletedOrders]);
+
+  const periodGPaySales = useMemo(() => {
+    return periodCompletedOrders.reduce((sum, o) => {
+      const mode = (o.paymentMode || "").toLowerCase();
+      if (mode.includes("gpay") || mode.includes("card") || mode.includes("upi") || mode.includes("online") || mode.includes("phonepe") || mode.includes("mixed")) {
+        return sum + (o.amountPaid || o.total);
+      }
+      return sum;
+    }, 0);
+  }, [periodCompletedOrders]);
+
+  const periodExpenseCash = useMemo(() => {
+    return dateFilteredExpenses
+      .filter(e => (e.payment_mode || "").toLowerCase().includes("cash"))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [dateFilteredExpenses]);
+
+  const periodExpenseGPay = useMemo(() => {
+    return dateFilteredExpenses
+      .filter(e => !(e.payment_mode || "").toLowerCase().includes("cash"))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [dateFilteredExpenses]);
+
+  const periodBlockInfo = useMemo(() => {
+    const pStr = period === "Custom" ? `${fromDate || 'Start'} to ${toDate || 'End'}` : period;
+    return {
+      title: `Financial Collections (${pStr})`,
+      badge: pStr,
+      cashLabel: `Cash (${pStr})`,
+      cashSub: `Cash`,
+      gpayLabel: `GPay (${pStr})`,
+      gpaySub: `GPay`,
+      expCashLabel: `Expense Cash (${pStr})`,
+      expCashSub: `Cash Exp`,
+      expGPayLabel: `Expense GPay (${pStr})`,
+      expGPaySub: `GPay Exp`
+    };
+  }, [period, fromDate, toDate]);
+
 
   // -------------------------------------------------------------
   // BRANCH-WISE COMPARISON MATRIX
   // -------------------------------------------------------------
   const branchAnalyticsMatrix = useMemo(() => {
     return branchesList.map(bId => {
-      const bOrders = orders.filter(o => o.branchId === bId);
-      const bExpenses = expenses.filter(e => e.branch_id === bId);
+      const bOrders = orders.filter(o => (o.branchId || "").toLowerCase() === bId.toLowerCase());
+      const bExpenses = expenses.filter(e => (e.branch_id || "").toLowerCase() === bId.toLowerCase());
       const bCompleted = bOrders.filter(o => o.status === "Paid" || (o.amountPaid || 0) > 0);
 
       const bTotalRevenue = bCompleted.reduce((acc, o) => acc + (o.amountPaid || o.total), 0);
@@ -355,7 +411,7 @@ export default function AnalyticsPage() {
 
       return {
         branchId: bId,
-        branchName: bId.replace('-', ' ').toUpperCase(),
+        branchName: bId.replace(/[-_]/g, ' ').toUpperCase(),
         totalOrders: bOrders.length,
         completedBills: bCompleted.length,
         totalRevenue: bTotalRevenue,
@@ -397,6 +453,23 @@ export default function AnalyticsPage() {
   const onlineBillsRev = useMemo(() => completedOrders.filter(o => o.source === "ONLINE").reduce((a, b) => a + (b.amountPaid || b.total), 0), [completedOrders]);
   const totalOfflineCount = useMemo(() => completedOrders.filter(o => o.source === "OFFLINE").length, [completedOrders]);
   const totalOnlineCount = useMemo(() => completedOrders.filter(o => o.source === "ONLINE").length, [completedOrders]);
+  
+  // Pending Bills & Pending Amount Calculations
+  const pendingOrders = useMemo(() => dateFilteredOrders.filter(o => {
+    const paid = o.amountPaid ?? (o.status === "Paid" ? o.total : 0);
+    return (o.total > paid) || o.status === "Unpaid" || o.status === "Pending" || o.status === "Partial";
+  }), [dateFilteredOrders]);
+
+  const pendingBillsCount = useMemo(() => pendingOrders.length, [pendingOrders]);
+
+  const pendingAmount = useMemo(() => pendingOrders.reduce((sum, o) => {
+    const paid = o.amountPaid ?? (o.status === "Paid" ? o.total : 0);
+    const due = Math.max(0, o.total - paid);
+    return sum + due;
+  }, 0), [pendingOrders]);
+
+  const totalExpense = useMemo(() => dateFilteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0), [dateFilteredExpenses]);
+  const netProfit = totalRevenue - totalExpense;
   
   const totalItemsSold = useMemo(() => {
     return completedOrders.reduce((acc, o) => {
@@ -542,7 +615,7 @@ export default function AnalyticsPage() {
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-dark-900 flex items-center gap-2">
-              <span className="w-1.5 h-6 bg-brand-gold rounded-full inline-block"></span>
+              <span className="w-1.5 h-6 bg-dark-900 rounded-full inline-block"></span>
               POS Analytics & Financial Suite
             </h2>
             <p className="text-xs text-dark-500 mt-1 pl-3.5 font-medium">
@@ -553,25 +626,25 @@ export default function AnalyticsPage() {
           <div className="flex flex-col items-end gap-3">
             <button 
               onClick={loadData}
-              className="flex items-center gap-2 px-4 py-1.5 bg-white hover:bg-gold-50 text-dark-900 border border-gold-200 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+              className="flex items-center gap-2 px-4 py-1.5 bg-white hover:bg-gray-100 text-dark-900 border border-gray-200 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all shadow-sm cursor-pointer"
             >
-              <RotateCw size={12} className="text-brand-gold" />
+              <RotateCw size={12} className="text-gray-700" />
               Refresh Data
             </button>
           </div>
         </div>
 
         {/* Branch Filter Selector & Date Period Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-white/80 p-3.5 rounded-2xl border border-gold-200 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm">
           
           {/* Branch Filter Selector */}
           <div className="flex items-center gap-2">
-            <Building2 className="text-brand-gold" size={16} />
+            <Building2 className="text-gray-700" size={16} />
             <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest hidden sm:inline">Branch:</span>
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              className="bg-gold-50 border border-gold-200 rounded-full px-4 py-1.5 text-xs font-extrabold text-dark-900 uppercase tracking-wider outline-none cursor-pointer focus:border-brand-gold"
+              className="bg-gray-50 border border-gray-200 rounded-full px-4 py-1.5 text-xs font-extrabold text-dark-900 uppercase tracking-wider outline-none cursor-pointer focus:border-dark-900"
             >
               <option value="ALL">All Branches</option>
               {branchesList.map(b => (
@@ -586,7 +659,7 @@ export default function AnalyticsPage() {
           {tab !== "TODAY'S SALES" ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest px-1">Period:</span>
-              {["Today", "This Week", "This Month", "This Year", "Custom"].map(p => (
+              {["All Time", "Today", "This Week", "This Month", "This Year", "Custom"].map(p => (
                 <button 
                   key={p}
                   onClick={() => handlePeriodChange(p)}
@@ -594,7 +667,7 @@ export default function AnalyticsPage() {
                     "px-3.5 py-1 rounded-full text-[11px] font-bold transition-all uppercase tracking-wider cursor-pointer",
                     period === p 
                       ? "bg-dark-900 text-white shadow-md" 
-                      : "bg-white text-dark-700 border border-gold-200 hover:bg-gold-50"
+                      : "bg-white text-dark-700 border border-gray-200 hover:bg-gray-100"
                   )}
                 >
                   {p}
@@ -608,7 +681,7 @@ export default function AnalyticsPage() {
           )}
 
           {/* Date Pickers */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2 bg-white border border-gold-200 rounded-xl sm:rounded-full px-3 py-2 sm:px-4 sm:py-1.5 shadow-sm w-full sm:w-auto">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2 bg-white border border-gray-200 rounded-xl sm:rounded-full px-3 py-2 sm:px-4 sm:py-1.5 shadow-sm w-full sm:w-auto">
             <div className="flex items-center gap-2 flex-1 min-w-[120px]">
               <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">From</span>
               <input 
@@ -640,16 +713,16 @@ export default function AnalyticsPage() {
 
 
         {/* Analytics Main Tabs */}
-        <div className="flex items-center gap-6 sm:gap-8 border-b border-gold-200 overflow-x-auto flex-nowrap">
+        <div className="flex items-center gap-6 sm:gap-8 border-b border-gray-200 overflow-x-auto flex-nowrap px-1">
           {["BRANCH ANALYTICS", "REVENUE", "TODAY'S SALES", "PRODUCTS", "COUPONS"].map(t => (
             <button 
               key={t}
               onClick={() => setTab(t)}
               className={cn(
-                "py-3 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer whitespace-nowrap",
+                "py-3 text-[11px] font-bold uppercase tracking-widest border-b-2 transition-colors cursor-pointer whitespace-nowrap px-1",
                 tab === t 
-                  ? "border-dark-900 text-dark-900 font-extrabold scale-105" 
-                  : "border-transparent text-dark-400 hover:text-dark-700"
+                  ? "border-dark-900 text-dark-900 font-black" 
+                  : "border-transparent text-gray-500 hover:text-dark-900"
               )}
             >
               {t}
@@ -662,11 +735,11 @@ export default function AnalyticsPage() {
           <div className="space-y-6 animate-in fade-in duration-300">
             
             {/* Branch Summary Cards */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-xs font-black text-dark-900 tracking-widest uppercase flex items-center gap-2">
-                    <Building2 className="text-brand-gold" size={16} />
+                    <Building2 className="text-gray-700" size={16} />
                     Branch-wise Performance & Collections
                   </h3>
                   <p className="text-[11px] text-dark-500 font-medium mt-0.5">Comparative overview across all studio branches</p>
@@ -675,7 +748,7 @@ export default function AnalyticsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 {branchAnalyticsMatrix.map(b => (
-                  <div key={b.branchId} className="bg-gold-50/50 p-5 rounded-2xl border border-gold-200 hover:border-brand-gold transition-all">
+                  <div key={b.branchId} className="bg-gray-50 p-5 rounded-2xl border border-gray-200 hover:border-dark-900 transition-all">
                     <div className="flex justify-between items-start mb-3">
                       <span className="text-xs font-black text-dark-900 tracking-wider">{b.branchName}</span>
                       <span className="text-[9px] font-extrabold bg-dark-900 text-white px-2 py-0.5 rounded-full uppercase">
@@ -685,7 +758,7 @@ export default function AnalyticsPage() {
 
                     <div className="text-xl font-black text-dark-900 mb-3">₹{b.totalRevenue.toLocaleString()}</div>
                     
-                    <div className="space-y-1.5 text-xs pt-3 border-t border-gold-200">
+                    <div className="space-y-1.5 text-xs pt-3 border-t border-gray-200">
                       <div className="flex justify-between">
                         <span className="text-dark-500 font-medium">Cash Collected:</span>
                         <span className="font-bold text-emerald-700">₹{b.cashSales.toLocaleString()}</span>
@@ -698,7 +771,7 @@ export default function AnalyticsPage() {
                         <span className="text-dark-500 font-medium">Expenses:</span>
                         <span className="font-bold text-red-600">-₹{b.totalExpenses.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between pt-1 border-t border-gold-200 font-extrabold">
+                      <div className="flex justify-between pt-1 border-t border-gray-200 font-extrabold">
                         <span className="text-dark-900">Net Balance:</span>
                         <span className={b.netMargin >= 0 ? "text-emerald-700 font-black" : "text-red-600 font-black"}>
                           ₹{b.netMargin.toLocaleString()}
@@ -713,7 +786,7 @@ export default function AnalyticsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
-                    <tr className="border-b border-gold-200 text-[10px] font-bold text-dark-400 uppercase tracking-widest bg-gold-50/50">
+                    <tr className="border-b border-gray-200 text-[10px] font-bold text-dark-400 uppercase tracking-widest bg-gray-50">
                       <th className="py-3.5 px-4">Branch</th>
                       <th className="py-3.5 px-4 text-center">Orders</th>
                       <th className="py-3.5 px-4 text-right">Sales Revenue</th>
@@ -723,11 +796,11 @@ export default function AnalyticsPage() {
                       <th className="py-3.5 px-4 text-right font-black">Net Profit</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gold-100 text-xs font-semibold">
+                  <tbody className="divide-y divide-gray-100 text-xs font-semibold">
                     {branchAnalyticsMatrix.map(b => (
-                      <tr key={b.branchId} className="hover:bg-gold-50/40 transition-colors">
+                      <tr key={b.branchId} className="hover:bg-gray-50 transition-colors">
                         <td className="py-4 px-4 font-black text-dark-900 flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-brand-gold"></span>
+                          <span className="w-2 h-2 rounded-full bg-dark-900"></span>
                           {b.branchName}
                         </td>
                         <td className="py-4 px-4 text-center font-bold text-dark-700">{b.completedBills}</td>
@@ -757,7 +830,9 @@ export default function AnalyticsPage() {
             
             {/* KPI Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between group hover:border-brand-gold transition-all">
+              
+              {/* Total Revenue Card */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between group hover:border-dark-900 transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Total Revenue</span>
                   <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -770,7 +845,8 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between group hover:border-brand-gold transition-all">
+              {/* Completed Bills Card */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between group hover:border-dark-900 transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Completed Bills</span>
                   <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -783,83 +859,132 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between group hover:border-brand-gold transition-all">
+              {/* Pending Bill Card */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between group hover:border-dark-900 transition-all">
                 <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Offline Bills</span>
+                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Pending Bill</span>
+                  <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <FileText size={14} strokeWidth={2.5} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-2xl font-black text-amber-600">{pendingBillsCount}</div>
+                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Unpaid & partial bills</div>
+                </div>
+              </div>
+
+              {/* Pending Amount Card */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between group hover:border-dark-900 transition-all">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Pending Amount</span>
                   <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
-                    <Smartphone size={14} strokeWidth={2.5} />
+                    <Wallet size={14} strokeWidth={2.5} />
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-dark-900">₹{offlineBillsRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Walk-in POS sales</div>
+                  <div className="text-2xl font-black text-red-600">₹{pendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Total balance due</div>
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between group hover:border-brand-gold transition-all">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Online Bills</span>
-                  <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
-                    <Package size={14} strokeWidth={2.5} />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-dark-900">₹{onlineBillsRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Online POS sales</div>
-                </div>
-              </div>
             </div>
 
-            {/* MONTHLY FINANCIAL BLOCKS */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-gold-100">
-                <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest flex items-center gap-2">
-                  <CreditCard className="text-brand-gold" size={16} />
-                  Monthly Financial Blocks ({currentMonthPrefix})
-                </h3>
-                <span className="text-[9px] font-extrabold bg-gold-100 text-dark-900 px-2 py-0.5 rounded-full uppercase">
-                  Current Month
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-                {/* Block 5: Cash per month */}
-                <div className="bg-white p-4 rounded-xl border border-teal-300 shadow-sm flex flex-col justify-between bg-teal-50/30">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-                    <span className="text-[10px] font-black text-teal-800 uppercase tracking-wider">Cash per Month</span>
-                    <span className="text-[9px] sm:text-[10px] font-bold bg-teal-100 text-teal-900 px-2 py-0.5 rounded-md whitespace-nowrap">Month Cash</span>
-                  </div>
-                  <div className="text-xl font-black text-teal-950">₹{monthCashSales.toLocaleString()}</div>
+            {/* DYNAMIC FINANCIAL COLLECTIONS BLOCK (BASED ON PERIOD SELECTION) */}
+            {period === "Today" && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                  <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest flex items-center gap-2">
+                    <CreditCard className="text-gray-700" size={16} />
+                    Daily Financial Collections (Today)
+                  </h3>
+                  <span className="text-[9px] font-extrabold bg-gray-100 text-dark-900 px-2.5 py-0.5 rounded-full uppercase border border-gray-200">
+                    Today
+                  </span>
                 </div>
 
-                {/* Block 6: GPay per month */}
-                <div className="bg-white p-4 rounded-xl border border-indigo-300 shadow-sm flex flex-col justify-between bg-indigo-50/30">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-                    <span className="text-[10px] font-black text-indigo-800 uppercase tracking-wider">GPay per Month</span>
-                    <span className="text-[9px] sm:text-[10px] font-bold bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-md whitespace-nowrap">Month GPay</span>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">Cash Today</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-white text-gray-800 border border-gray-200 px-2 py-0.5 rounded-md whitespace-nowrap">Daily Cash</span>
+                    </div>
+                    <div className="text-xl font-black text-gray-900">₹{todayCashSales.toLocaleString()}</div>
                   </div>
-                  <div className="text-xl font-black text-indigo-950">₹{monthGPaySales.toLocaleString()}</div>
-                </div>
 
-                {/* Block 7: Expense Cash per month */}
-                <div className="bg-white p-4 rounded-xl border border-rose-300 shadow-sm flex flex-col justify-between bg-rose-50/30">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-                    <span className="text-[10px] font-black text-rose-800 uppercase tracking-wider">Expense Cash Month</span>
-                    <span className="text-[9px] sm:text-[10px] font-bold bg-rose-100 text-rose-900 px-2 py-0.5 rounded-md whitespace-nowrap">Month Exp</span>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">GPay Today</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-white text-gray-800 border border-gray-200 px-2 py-0.5 rounded-md whitespace-nowrap">Daily GPay</span>
+                    </div>
+                    <div className="text-xl font-black text-gray-900">₹{todayGPaySales.toLocaleString()}</div>
                   </div>
-                  <div className="text-xl font-black text-rose-950">-₹{monthExpenseCash.toLocaleString()}</div>
-                </div>
 
-                {/* Block 8: Expense GPay per month */}
-                <div className="bg-white p-4 rounded-xl border border-orange-300 shadow-sm flex flex-col justify-between bg-orange-50/30">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-                    <span className="text-[10px] font-black text-orange-900 uppercase tracking-wider">Expense GPay Month</span>
-                    <span className="text-[9px] sm:text-[10px] font-bold bg-orange-100 text-orange-950 px-2 py-0.5 rounded-md whitespace-nowrap">GPay Exp</span>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black text-red-700 uppercase tracking-wider">Expense Cash Today</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-md whitespace-nowrap">Daily Cash Exp</span>
+                    </div>
+                    <div className="text-xl font-black text-red-700">-₹{todayExpenseCash.toLocaleString()}</div>
                   </div>
-                  <div className="text-xl font-black text-orange-950">-₹{monthExpenseGPay.toLocaleString()}</div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black text-red-700 uppercase tracking-wider">Expense GPay Today</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-md whitespace-nowrap">Daily GPay Exp</span>
+                    </div>
+                    <div className="text-xl font-black text-red-700">-₹{todayExpenseGPay.toLocaleString()}</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {period === "This Month" && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                  <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest flex items-center gap-2">
+                    <CreditCard className="text-gray-700" size={16} />
+                    Monthly Financial Collections (This Month)
+                  </h3>
+                  <span className="text-[9px] font-extrabold bg-gray-100 text-dark-900 px-2.5 py-0.5 rounded-full uppercase border border-gray-200">
+                    This Month
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">Cash per Month</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-white text-gray-800 border border-gray-200 px-2 py-0.5 rounded-md whitespace-nowrap">Month Cash</span>
+                    </div>
+                    <div className="text-xl font-black text-gray-900">₹{monthCashSales.toLocaleString()}</div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">GPay per Month</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-white text-gray-800 border border-gray-200 px-2 py-0.5 rounded-md whitespace-nowrap">Month GPay</span>
+                    </div>
+                    <div className="text-xl font-black text-gray-900">₹{monthGPaySales.toLocaleString()}</div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black text-red-700 uppercase tracking-wider">Expense Cash Month</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-md whitespace-nowrap">Month Cash Exp</span>
+                    </div>
+                    <div className="text-xl font-black text-red-700">-₹{monthExpenseCash.toLocaleString()}</div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black text-red-700 uppercase tracking-wider">Expense GPay Month</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-md whitespace-nowrap">Month GPay Exp</span>
+                    </div>
+                    <div className="text-xl font-black text-red-700">-₹{monthExpenseGPay.toLocaleString()}</div>
+                  </div>
+                </div>
+              </div>
+            )}
 
 
             {/* Charts & Bottom Section */}
@@ -869,14 +994,14 @@ export default function AnalyticsPage() {
               <div className="lg:col-span-2 space-y-6">
                 
                 {/* Revenue Trend This Year Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                   <div className="mb-6">
-                    <h3 className="text-xs font-black text-red-900 tracking-widest uppercase flex items-center gap-1">
-                      REVENUE TREND THIS YEAR <span className="text-red-700">2026</span>
+                    <h3 className="text-xs font-black text-dark-900 tracking-widest uppercase flex items-center gap-1">
+                      REVENUE TREND THIS YEAR <span className="text-gray-600">2026</span>
                     </h3>
                     <div className="flex items-center gap-3 mt-1.5">
                       <span className="text-2xl font-black text-dark-900">₹{totalRevenue.toLocaleString()}</span>
-                      <span className="text-[9px] font-bold bg-orange-50 text-orange-600 border border-orange-200 rounded-md px-2 py-0.5 uppercase tracking-widest">
+                      <span className="text-[9px] font-bold bg-gray-100 text-gray-700 border border-gray-200 rounded-md px-2 py-0.5 uppercase tracking-widest">
                         Avg ₹{Math.round(totalRevenue / 12).toLocaleString()}/mo
                       </span>
                     </div>
@@ -894,11 +1019,11 @@ export default function AnalyticsPage() {
                           </div>
                           {isAugust ? (
                             <div className="flex flex-col items-center w-full max-w-[36px]" title={`AUG: ${monthRevenue}`}>
-                              <span className="text-[10px] font-bold text-red-700 mb-1">Max</span>
-                              <div className="w-full bg-[#800020] hover:bg-red-900 transition-colors rounded-t-md h-40 cursor-pointer"></div>
+                              <span className="text-[10px] font-bold text-gray-800 mb-1">Max</span>
+                              <div className="w-full bg-dark-900 hover:bg-gray-800 transition-colors rounded-t-md h-40 cursor-pointer"></div>
                             </div>
                           ) : (
-                            <div className="w-full max-w-[36px] bg-red-100/60 hover:bg-red-300 transition-colors rounded-full h-3 cursor-pointer" title={`${m}: ${monthRevenue}`}></div>
+                            <div className="w-full max-w-[36px] bg-gray-100 hover:bg-gray-200 transition-colors rounded-full h-3 cursor-pointer" title={`${m}: ${monthRevenue}`}></div>
                           )}
                           <span className="text-[9px] font-bold text-dark-500 uppercase tracking-widest">{m}</span>
                         </div>
@@ -909,11 +1034,11 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Revenue This Week Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                   <div className="mb-4">
                     <h3 className="text-xs font-black text-dark-900 tracking-widest uppercase flex items-center gap-1.5">
                       REVENUE THIS WEEK 
-                      <span className="text-red-700 font-extrabold">(WEEK {currentWeekNum} OF 2026)</span>
+                      <span className="text-gray-600 font-extrabold">(WEEK {currentWeekNum} OF 2026)</span>
                     </h3>
                     <div className="text-xs font-bold text-dark-500 mt-1">₹{totalRevenue.toLocaleString()} total</div>
                   </div>
@@ -928,9 +1053,9 @@ export default function AnalyticsPage() {
                             {day}: {dayRevenue}
                           </div>
                           {isThu ? (
-                            <div className="w-full max-w-[32px] bg-[#800020] hover:bg-red-900 transition-colors rounded-t-md h-12 cursor-pointer" title={`THU: ${dayRevenue}`}></div>
+                            <div className="w-full max-w-[32px] bg-dark-900 hover:bg-gray-800 transition-colors rounded-t-md h-12 cursor-pointer" title={`THU: ${dayRevenue}`}></div>
                           ) : (
-                            <div className="w-full max-w-[32px] bg-amber-100/60 hover:bg-amber-300 transition-colors rounded-full h-3 cursor-pointer" title={`${day}: ${dayRevenue}`}></div>
+                            <div className="w-full max-w-[32px] bg-gray-100 hover:bg-gray-200 transition-colors rounded-full h-3 cursor-pointer" title={`${day}: ${dayRevenue}`}></div>
                           )}
                           <span className="text-[9px] font-bold text-dark-500 uppercase tracking-widest">{day}</span>
                         </div>
@@ -945,7 +1070,7 @@ export default function AnalyticsPage() {
               <div className="space-y-6">
                 
                 {/* Order Source Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                   <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-5">ORDER SOURCE</h3>
                   <div className="space-y-5">
                     <div>
@@ -953,7 +1078,7 @@ export default function AnalyticsPage() {
                         <span className="text-red-600 uppercase tracking-widest text-[10px]">OFFLINE</span>
                         <span className="text-dark-900">{totalOfflineCount}</span>
                       </div>
-                      <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
+                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
                         <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: `${offlinePct}%` }}></div>
                       </div>
                     </div>
@@ -963,7 +1088,7 @@ export default function AnalyticsPage() {
                         <span className="text-emerald-600 uppercase tracking-widest text-[10px]">ONLINE</span>
                         <span className="text-dark-900">{totalOnlineCount}</span>
                       </div>
-                      <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
+                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
                         <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${onlinePct}%` }}></div>
                       </div>
                     </div>
@@ -983,8 +1108,8 @@ export default function AnalyticsPage() {
           <div className="space-y-6 animate-in fade-in duration-300">
 
             {/* DAILY FINANCIAL BLOCKS */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-gold-100">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                 <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest flex items-center gap-2">
                   <Banknote className="text-emerald-600" size={16} />
                   Daily Financial Blocks (Today)
@@ -1038,7 +1163,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Left Column: Today's Transactions Table */}
-              <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gold-200 p-6 flex flex-col justify-between">
+              <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between">
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase">Today's Transactions</h3>
@@ -1050,7 +1175,7 @@ export default function AnalyticsPage() {
                         value={todaySearch}
                         onChange={(e) => setTodaySearch(e.target.value)}
                         placeholder="Search contact no..."
-                        className="w-full bg-gold-50 border border-gold-200 rounded-xl pl-9 pr-4 py-1.5 text-xs font-medium text-dark-900 outline-none focus:border-brand-gold focus:bg-white transition-all placeholder-dark-400"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-1.5 text-xs font-medium text-dark-900 outline-none focus:border-dark-900 focus:bg-white transition-all placeholder-dark-400"
                       />
                     </div>
                   </div>
@@ -1058,7 +1183,7 @@ export default function AnalyticsPage() {
                   <div className="overflow-x-auto min-h-[220px]">
                     <table className="w-full text-left border-collapse min-w-[500px]">
                       <thead>
-                        <tr className="border-b border-gold-100 text-[9px] font-bold text-dark-400 uppercase tracking-widest">
+                        <tr className="border-b border-gray-200 text-[9px] font-bold text-dark-400 uppercase tracking-widest">
                           <th className="py-3 px-4">Invoice ID</th>
                           <th className="py-3 px-4">Customer No</th>
                           <th className="py-3 px-4">Source</th>
@@ -1066,10 +1191,10 @@ export default function AnalyticsPage() {
                           <th className="py-3 px-4 text-right">Grand Total</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gold-50">
+                      <tbody className="divide-y divide-gray-100">
                         {filteredTodayTransactions.length > 0 ? (
                           filteredTodayTransactions.map((tx) => (
-                            <tr key={tx.id} className="hover:bg-gold-50/50 transition-colors text-xs">
+                            <tr key={tx.id} className="hover:bg-gray-50 transition-colors text-xs">
                               <td className="py-3 px-4 font-bold text-dark-900">{tx.id}</td>
                               <td className="py-3 px-4 font-semibold text-dark-700">{tx.phone || tx.customer}</td>
                               <td className="py-3 px-4">
@@ -1100,7 +1225,7 @@ export default function AnalyticsPage() {
               <div className="space-y-6">
                 
                 {/* Channel Split & Total Revenue Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 flex flex-col gap-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col gap-6">
                   <div className="flex flex-col sm:flex-row gap-5 items-start justify-between">
                     <div>
                       <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-2">Total Revenue</h3>
@@ -1122,7 +1247,7 @@ export default function AnalyticsPage() {
                     </div>
                   </div>
                   
-                  <div className="border-t border-gold-100 pt-5">
+                  <div className="border-t border-gray-100 pt-5">
                     <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-4">Today's Channel Split</h3>
                     
                     <div className="space-y-4">
@@ -1131,7 +1256,7 @@ export default function AnalyticsPage() {
                           <span className="text-red-500 uppercase tracking-widest text-[10px]">Offline</span>
                           <span className="text-dark-900">₹{todayOfflineRev.toLocaleString()}</span>
                         </div>
-                        <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
+                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
                           <div className="h-full bg-red-500 rounded-full" style={{ width: todayRevenue > 0 ? `${(todayOfflineRev / todayRevenue) * 100}%` : '0%' }}></div>
                         </div>
                       </div>
@@ -1141,7 +1266,7 @@ export default function AnalyticsPage() {
                           <span className="text-emerald-500 uppercase tracking-widest text-[10px]">Online</span>
                           <span className="text-dark-900">₹{todayOnlineRev.toLocaleString()}</span>
                         </div>
-                        <div className="h-1.5 w-full bg-gold-50 rounded-full overflow-hidden border border-gold-100">
+                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
                           <div className="h-full bg-emerald-500 rounded-full" style={{ width: todayRevenue > 0 ? `${(todayOnlineRev / todayRevenue) * 100}%` : '0%' }}></div>
                         </div>
                       </div>
@@ -1160,7 +1285,7 @@ export default function AnalyticsPage() {
         {/* TAB 3: PRODUCTS */}
         {tab === "PRODUCTS" && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase">Product Sales Leaderboard</h3>
@@ -1172,7 +1297,7 @@ export default function AnalyticsPage() {
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     placeholder="Search products..."
-                    className="w-full bg-gold-50 border border-gold-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-dark-900 outline-none focus:border-brand-gold focus:bg-white transition-all placeholder-dark-400"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-dark-900 outline-none focus:border-dark-900 focus:bg-white transition-all placeholder-dark-400"
                   />
                 </div>
               </div>
@@ -1180,7 +1305,7 @@ export default function AnalyticsPage() {
               <div className="overflow-x-auto min-h-[300px]">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
-                    <tr className="border-b border-gold-200 text-[10px] font-bold text-dark-400 uppercase tracking-widest bg-gold-50/50">
+                    <tr className="border-b border-gray-200 text-[10px] font-bold text-dark-400 uppercase tracking-widest bg-gray-50">
                       <th className="py-3 px-6">Rank</th>
                       <th className="py-3 px-6">Product Name</th>
                       <th className="py-3 px-6 text-center">Qty Sold</th>
@@ -1188,17 +1313,17 @@ export default function AnalyticsPage() {
                       <th className="py-3 px-6 text-right w-64">Market Share</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gold-100 text-xs font-semibold">
+                  <tbody className="divide-y divide-gray-100 text-xs font-semibold">
                     {productLeaderboard.length > 0 ? (
                       productLeaderboard.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-gold-50/50 transition-colors">
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-6 font-black text-dark-400">{idx + 1}</td>
                           <td className="py-4 px-6 font-bold text-dark-900 uppercase">{item.name}</td>
                           <td className="py-4 px-6 text-center font-bold text-dark-700">{item.qty} pcs</td>
                           <td className="py-4 px-6 text-right font-black text-dark-900">₹{item.revenue.toLocaleString()}</td>
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-3 justify-end">
-                              <div className="w-32 bg-gold-100 rounded-full h-1.5 overflow-hidden">
+                              <div className="w-32 bg-gray-100 rounded-full h-1.5 overflow-hidden">
                                 <div className="bg-red-600 h-full rounded-full" style={{ width: `${Math.min(item.share, 100)}%` }}></div>
                               </div>
                               <span className="text-[10px] font-black text-dark-600 min-w-[36px] text-right">{item.share}%</span>
@@ -1227,12 +1352,12 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Left Column: Discount Summary */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 flex flex-col justify-between space-y-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between space-y-6">
                 <div>
                   <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-6">Discount Summary</h3>
 
                   <div className="space-y-4">
-                    <div className="bg-gold-50/50 p-4 rounded-xl border border-gold-100 flex items-center justify-between">
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between">
                       <div>
                         <div className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Total Discounts Given</div>
                         <div className="text-2xl font-black text-dark-900 mt-1">₹{couponData.totalDiscount.toLocaleString()}</div>
@@ -1242,7 +1367,7 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
 
-                    <div className="bg-gold-50/50 p-4 rounded-xl border border-gold-100 flex items-center justify-between">
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between">
                       <div>
                         <div className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Discounted Orders</div>
                         <div className="text-2xl font-black text-dark-900 mt-1">{couponData.discountedOrdersCount}</div>
@@ -1256,7 +1381,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Right Column: Discount Applied */}
-              <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gold-200 p-6">
+              <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase">Discount Applied</h3>
@@ -1268,7 +1393,7 @@ export default function AnalyticsPage() {
                       value={couponSearch}
                       onChange={(e) => setCouponSearch(e.target.value)}
                       placeholder="Search by ID or customer..."
-                      className="w-full bg-gold-50 border border-gold-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-dark-900 outline-none focus:border-brand-gold focus:bg-white transition-all placeholder-dark-400"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-dark-900 outline-none focus:border-dark-900 focus:bg-white transition-all placeholder-dark-400"
                     />
                   </div>
                 </div>
@@ -1276,17 +1401,17 @@ export default function AnalyticsPage() {
                 <div className="overflow-x-auto min-h-[250px]">
                   <table className="w-full text-left border-collapse min-w-[550px]">
                     <thead>
-                      <tr className="border-b border-gold-200 text-[10px] font-bold text-dark-400 uppercase tracking-widest bg-gold-50/50">
+                      <tr className="border-b border-gray-200 text-[10px] font-bold text-dark-400 uppercase tracking-widest bg-gray-50">
                         <th className="py-3 px-4">Transaction ID</th>
                         <th className="py-3 px-4">Customer</th>
                         <th className="py-3 px-4 text-center">Order Total</th>
                         <th className="py-3 px-4 text-right">Discount Applied</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gold-100 text-xs">
+                    <tbody className="divide-y divide-gray-100 text-xs">
                       {couponData.promos.length > 0 ? (
                         couponData.promos.map((promo) => (
-                          <tr key={promo.id} className="hover:bg-gold-50/50 transition-colors">
+                          <tr key={promo.id} className="hover:bg-gray-50 transition-colors">
                             <td className="py-3.5 px-4 font-bold text-dark-900">{promo.id}</td>
                             <td className="py-3.5 px-4 font-bold text-dark-800">{promo.customer}</td>
                             <td className="py-3.5 px-4 text-center font-extrabold text-dark-900">₹{promo.total.toLocaleString()}</td>

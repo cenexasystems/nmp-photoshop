@@ -122,10 +122,10 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
       <div className="flex flex-col gap-6 pb-10">
         
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gold-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-6 bg-brand-gold rounded-full inline-block"></span>
+              <span className="w-2 h-6 bg-gray-900 rounded-full inline-block"></span>
               <h2 className="text-xl sm:text-2xl font-black text-dark-900 tracking-tight">
                 {branchName} DASHBOARD
               </h2>
@@ -152,7 +152,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
           {/* Today's Revenue */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
             <div className="flex justify-between items-start mb-3">
               <span className="text-[10px] font-extrabold text-dark-400 uppercase tracking-widest">Today's Revenue</span>
               <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
@@ -168,7 +168,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
           </div>
 
           {/* Net Cash Profit */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
             <div className="flex justify-between items-start mb-3">
               <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-widest">Net Cash Profit</span>
               <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center">
@@ -184,7 +184,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
           </div>
 
           {/* Net GPay Profit */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
             <div className="flex justify-between items-start mb-3">
               <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-widest">Net GPay Profit</span>
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
@@ -200,7 +200,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
           </div>
 
           {/* Today's Expenses */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gold-200 flex flex-col justify-between">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
             <div className="flex justify-between items-start mb-3">
               <span className="text-[10px] font-extrabold text-red-600 uppercase tracking-widest">Today's Expenses</span>
               <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
@@ -272,14 +272,14 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Recent Orders List (2 Columns) */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gold-200 p-6 flex flex-col justify-between">
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-5 pb-3 border-b border-gold-100">
+              <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-100">
                 <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest flex items-center gap-2">
-                  <FileText size={16} className="text-brand-gold" />
+                  <FileText size={16} className="text-gray-700" />
                   Recent Branch Orders
                 </h3>
-                <Link href={`/${branch}/history`} className="text-[10px] font-extrabold text-brand-gold hover:underline uppercase tracking-wider">
+                <Link href={`/${branch}/history`} className="text-[10px] font-extrabold text-gray-700 hover:underline uppercase tracking-wider">
                   View All Orders →
                 </Link>
               </div>
@@ -289,11 +289,11 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
               ) : recentOrders.length === 0 ? (
                 <div className="py-12 text-center text-xs font-medium italic text-dark-400">No orders logged for this branch yet.</div>
               ) : (
-                <div className="divide-y divide-gold-50">
+                <div className="divide-y divide-gray-100">
                   {recentOrders.map((ord) => (
-                    <div key={ord.id} className="py-3.5 flex items-center justify-between hover:bg-gold-50/40 px-2 rounded-xl transition-colors">
+                    <div key={ord.id} className="py-3.5 flex items-center justify-between hover:bg-gray-50 px-2 rounded-xl transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gold-50 border border-gold-200 flex items-center justify-center text-dark-700 font-bold text-xs">
+                        <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-dark-700 font-bold text-xs">
                           #{ord.id.slice(-4)}
                         </div>
                         <div>
@@ -322,14 +322,14 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
 
           {/* Quick Actions & Branch Info */}
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gold-200 p-6 space-y-4">
-              <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest pb-3 border-b border-gold-100">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+              <h3 className="text-xs font-black text-dark-900 uppercase tracking-widest pb-3 border-b border-gray-100">
                 Quick Navigation
               </h3>
               <div className="grid grid-cols-2 gap-2.5">
                 <Link
                   href={`/${branch}`}
-                  className="p-3 bg-gold-50 hover:bg-gold-100 border border-gold-200 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
+                  className="p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
                 >
                   <ShoppingBag size={18} className="text-dark-700" />
                   <span className="text-[10px] font-bold text-dark-900 uppercase tracking-wider">POS Billing</span>
@@ -337,7 +337,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
 
                 <Link
                   href={`/${branch}/history`}
-                  className="p-3 bg-gold-50 hover:bg-gold-100 border border-gold-200 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
+                  className="p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
                 >
                   <FileText size={18} className="text-dark-700" />
                   <span className="text-[10px] font-bold text-dark-900 uppercase tracking-wider">Orders</span>
@@ -345,7 +345,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
 
                 <Link
                   href={`/${branch}/customers`}
-                  className="p-3 bg-gold-50 hover:bg-gold-100 border border-gold-200 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
+                  className="p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
                 >
                   <Users size={18} className="text-dark-700" />
                   <span className="text-[10px] font-bold text-dark-900 uppercase tracking-wider">Customers</span>
@@ -353,7 +353,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
 
                 <Link
                   href={`/${branch}/expenses`}
-                  className="p-3 bg-gold-50 hover:bg-gold-100 border border-gold-200 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
+                  className="p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors text-center"
                 >
                   <Wallet size={18} className="text-dark-700" />
                   <span className="text-[10px] font-bold text-dark-900 uppercase tracking-wider">Expenses</span>
