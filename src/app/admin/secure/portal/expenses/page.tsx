@@ -221,7 +221,7 @@ export default function ExpensesPage() {
                     type="text" 
                     value={orderNo}
                     onChange={(e) => setOrderNo(e.target.value)}
-                    placeholder="e.g. INV-2026-XXXX"
+                    placeholder="e.g. NMG-2026-XXXX"
                     className="w-full bg-gray-100 border border-gray-300 focus:border-gray-600 focus:bg-white rounded-xl px-4 py-2.5 outline-none transition-colors text-sm font-black text-gray-900 uppercase"
                   />
                   <p className="text-[9px] text-gray-500 mt-1.5 ml-1 font-medium italic">* We will verify this ID in the database before saving.</p>

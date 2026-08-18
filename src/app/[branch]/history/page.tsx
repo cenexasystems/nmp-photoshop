@@ -718,14 +718,13 @@ export default function HistoryPage() {
                         type="number"
                         value={paymentAmount}
                         onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          const writeoff = parseFloat(discountWriteoff) || 0;
                           const restToPay = paymentModalOrder.total - paymentModalOrder.amountPaid;
-                          if (val + writeoff > restToPay) {
-                            setPaymentAmount(Math.max(0, restToPay - writeoff).toString());
-                          } else {
-                            setPaymentAmount(e.target.value);
-                          }
+                          let val = parseFloat(e.target.value) || 0;
+                          if (val > restToPay) val = restToPay;
+                          setPaymentAmount(val === 0 ? e.target.value : val.toString());
+                          // Auto-calculate discount as the remaining unpaid portion
+                          const discount = Math.max(0, restToPay - val);
+                          setDiscountWriteoff(discount > 0 ? discount.toFixed(2) : "0");
                         }}
                         placeholder={`Max ₹${paymentModalOrder.total - paymentModalOrder.amountPaid}`}
                         className="w-full bg-gray-50 border border-gray-200 focus:border-gray-400 rounded-xl px-4 py-2.5 text-base font-black text-dark-900 outline-none transition-colors"
@@ -734,24 +733,11 @@ export default function HistoryPage() {
                     
                     <div className="w-1/3">
                       <label className="block text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-1.5">
-                        Discount (₹)
+                        Discount (₹) <span className="text-[9px] font-medium normal-case tracking-normal text-dark-400">auto</span>
                       </label>
-                      <input
-                        type="number"
-                        value={discountWriteoff}
-                        onChange={(e) => {
-                          const writeoff = parseFloat(e.target.value) || 0;
-                          const amount = parseFloat(paymentAmount) || 0;
-                          const restToPay = paymentModalOrder.total - paymentModalOrder.amountPaid;
-                          if (amount + writeoff > restToPay) {
-                            setDiscountWriteoff(Math.max(0, restToPay - amount).toString());
-                          } else {
-                            setDiscountWriteoff(e.target.value);
-                          }
-                        }}
-                        placeholder="0"
-                        className="w-full bg-red-50 border border-red-200 focus:border-red-400 rounded-xl px-4 py-2.5 text-base font-black text-red-700 outline-none transition-colors"
-                      />
+                      <div className="w-full bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-base font-black text-red-700 select-none">
+                        ₹{parseFloat(discountWriteoff) > 0 ? parseFloat(discountWriteoff).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                      </div>
                     </div>
                   </div>
               <div>

@@ -167,7 +167,7 @@ export default function BranchExpensesPage({ params }: { params: Promise<{ branc
                       type="text" 
                       value={orderNo}
                       onChange={(e) => setOrderNo(e.target.value)}
-                      placeholder="e.g. INV-2026-XXXX"
+                      placeholder="e.g. NMG-2026-XXXX"
                       className="w-full bg-gray-100 border border-gray-300 focus:border-gray-400 focus:bg-white rounded-xl pl-9 pr-4 py-2.5 outline-none transition-colors text-sm font-black text-dark-900 uppercase"
                     />
                   </div>

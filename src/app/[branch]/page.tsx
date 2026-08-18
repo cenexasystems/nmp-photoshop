@@ -103,7 +103,7 @@ export default function Home() {
     // Generate Invoice ID
     const year = new Date().getFullYear();
     const randomChars = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const invoiceId = `INV-${year}-${randomChars}`;
+    const invoiceId = `NMG-${year}-${randomChars}`;
     
     // Save to Supabase
     try {

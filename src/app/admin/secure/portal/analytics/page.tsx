@@ -395,8 +395,20 @@ export default function AnalyticsPage() {
   // -------------------------------------------------------------
   const branchAnalyticsMatrix = useMemo(() => {
     return branchesList.map(bId => {
-      const bOrders = orders.filter(o => (o.branchId || "").toLowerCase() === bId.toLowerCase());
-      const bExpenses = expenses.filter(e => (e.branch_id || "").toLowerCase() === bId.toLowerCase());
+      const bOrders = orders
+        .filter(o => (o.branchId || "").toLowerCase() === bId.toLowerCase())
+        .filter(o => {
+          if (fromDate && o.date < fromDate) return false;
+          if (toDate && o.date > toDate) return false;
+          return true;
+        });
+      const bExpenses = expenses
+        .filter(e => (e.branch_id || "").toLowerCase() === bId.toLowerCase())
+        .filter(e => {
+          if (fromDate && e.date < fromDate) return false;
+          if (toDate && e.date > toDate) return false;
+          return true;
+        });
       const bCompleted = bOrders.filter(o => o.status === "Paid" || (o.amountPaid || 0) > 0);
 
       const bTotalRevenue = bCompleted.reduce((acc, o) => acc + (o.amountPaid || o.total), 0);
@@ -423,7 +435,7 @@ export default function AnalyticsPage() {
         netMargin
       };
     });
-  }, [branchesList, orders, expenses]);
+  }, [branchesList, orders, expenses, fromDate, toDate]);
 
 
   // Calculations for Today's Sales Tab
