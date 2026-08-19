@@ -843,17 +843,17 @@ export default function AnalyticsPage() {
             {/* KPI Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               
-              {/* Total Revenue Card */}
+              {/* Net Profit Card */}
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between group hover:border-dark-900 transition-all">
                 <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Total Revenue</span>
+                  <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Net Profit</span>
                   <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
                     <IndianRupee size={14} strokeWidth={2.5} />
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-dark-900">₹{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">POS + manual combined</div>
+                  <div className={`text-2xl font-black ${netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>₹{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div className="text-[9px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Revenue − Expenses</div>
                 </div>
               </div>
 
@@ -1236,13 +1236,15 @@ export default function AnalyticsPage() {
               {/* Right Column: Today's Channel Split & Top Items */}
               <div className="space-y-6">
                 
-                {/* Channel Split & Total Revenue Card */}
+                {/* Channel Split & Net Profit Card */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col gap-6">
                   <div className="flex flex-col sm:flex-row gap-5 items-start justify-between">
                     <div>
-                      <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-2">Total Revenue</h3>
-                      <div className="text-3xl font-black text-dark-900">₹{todayRevenue.toLocaleString()}</div>
-                      <div className="text-[10px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Completed today</div>
+                      <h3 className="text-xs font-bold text-dark-900 tracking-widest uppercase mb-2">Net Profit Today</h3>
+                      <div className={`text-3xl font-black ${(todayCashSales + todayGPaySales - todayExpenseCash - todayExpenseGPay) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                        ₹{(todayCashSales + todayGPaySales - todayExpenseCash - todayExpenseGPay).toLocaleString()}
+                      </div>
+                      <div className="text-[10px] font-bold text-dark-400 mt-1 uppercase tracking-widest">Revenue − Expenses today</div>
                     </div>
 
                     <div className="flex flex-col gap-2.5 pt-1 w-full sm:w-auto">

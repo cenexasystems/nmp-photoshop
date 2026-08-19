@@ -110,6 +110,22 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
   const todayNetCash = todayCashSales - todayExpenseCash;
   const todayNetGPay = todayGPaySales - todayExpenseGPay;
 
+  // Pending amount — all orders with outstanding balance
+  const pendingAmount = useMemo(() => {
+    return orders.reduce((sum, o) => {
+      const paid = Number(o.amount_paid) || (o.payment_status === "Paid" ? Number(o.total) : 0);
+      const due = Math.max(0, Number(o.total) - paid);
+      return sum + due;
+    }, 0);
+  }, [orders]);
+
+  const pendingBillsCount = useMemo(() => {
+    return orders.filter(o => {
+      const paid = Number(o.amount_paid) || (o.payment_status === "Paid" ? Number(o.total) : 0);
+      return Number(o.total) > paid;
+    }).length;
+  }, [orders]);
+
   // Status counters
   const pendingCount = useMemo(() => orders.filter(o => (o.delivery_status || "Pending") === "Pending").length, [orders]);
   const processingCount = useMemo(() => orders.filter(o => o.delivery_status === "Processing").length, [orders]);
@@ -149,7 +165,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
         </div>
 
         {/* Top KPI Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           
           {/* Today's Revenue */}
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
@@ -211,6 +227,22 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
               <div className="text-2xl font-black text-red-600">₹{todayTotalExpenses.toLocaleString()}</div>
               <div className="text-[10px] font-bold text-dark-400 mt-1 uppercase tracking-wider">
                 {todayExpenses.length} expense item(s) logged
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Amount */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-amber-200 flex flex-col justify-between">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[10px] font-extrabold text-amber-700 uppercase tracking-widest">Pending Amount</span>
+              <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center">
+                <AlertCircle size={16} />
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl font-black text-amber-700">₹{pendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div className="text-[10px] font-bold text-dark-400 mt-1 uppercase tracking-wider">
+                {pendingBillsCount} unpaid / partial bill{pendingBillsCount !== 1 ? 's' : ''}
               </div>
             </div>
           </div>
