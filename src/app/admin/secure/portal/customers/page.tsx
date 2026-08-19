@@ -24,6 +24,7 @@ interface OrderItem {
   deliveryStatus: string;
   details: string;
   idNumber?: string;
+  branchId: string;
 }
 
 interface CustomerGroup {
@@ -40,9 +41,17 @@ const ITEMS_PER_PAGE = 5;
 export default function CustomerOrdersPage() {
   const [allOrders, setAllOrders] = useState<OrderItem[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCustomerGroup, setSelectedCustomerGroup] = useState<CustomerGroup | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Derive branch list from loaded orders
+  const branchList = useMemo(() => {
+    const set = new Set<string>();
+    allOrders.forEach(o => { if (o.branchId) set.add(o.branchId); });
+    return Array.from(set).sort();
+  }, [allOrders]);
 
   useEffect(() => {
     async function loadOrders() {
@@ -64,7 +73,8 @@ export default function CustomerOrdersPage() {
           paymentMode: o.payment_mode,
           deliveryStatus: o.delivery_status,
           details: o.order_items?.map((i: any) => i.details).join(', ') || '',
-          idNumber: o.order_items?.[0]?.id_number || ''
+          idNumber: o.order_items?.[0]?.id_number || '',
+          branchId: o.branch_id || ''
         }));
         setAllOrders(mappedOrders);
       }
@@ -73,11 +83,17 @@ export default function CustomerOrdersPage() {
     loadOrders();
   }, []);
 
+  // Branch-filtered orders
+  const branchFilteredOrders = useMemo(() => {
+    if (selectedBranch === "ALL") return allOrders;
+    return allOrders.filter(o => o.branchId === selectedBranch);
+  }, [allOrders, selectedBranch]);
+
   // Group raw orders by Customer Phone & Name
   const customerGroups = useMemo(() => {
     const map = new Map<string, CustomerGroup>();
 
-    allOrders.forEach((order) => {
+    branchFilteredOrders.forEach((order) => {
       const key = order.phone || order.customer.toLowerCase();
       if (!map.has(key)) {
         map.set(key, {
@@ -99,7 +115,7 @@ export default function CustomerOrdersPage() {
     });
 
     return Array.from(map.values());
-  }, [allOrders]);
+  }, [branchFilteredOrders]);
 
   // Filter Customer Groups by Name or Phone
   const filteredCustomers = useMemo(() => {
@@ -149,9 +165,24 @@ export default function CustomerOrdersPage() {
             />
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="bg-gray-50 border border-gray-200 px-4 py-2 rounded-xl text-xs font-bold text-dark-700">
-              Total Customers: <span className="text-dark-900 font-black">{filteredCustomers.length}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Branch Filter Pills */}
+            {["ALL", ...branchList].map(b => (
+              <button
+                key={b}
+                onClick={() => { setSelectedBranch(b); setCurrentPage(1); }}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all border cursor-pointer",
+                  selectedBranch === b
+                    ? "bg-dark-900 text-white border-dark-900 shadow-sm"
+                    : "bg-gray-50 text-dark-700 border-gray-200 hover:bg-gray-100"
+                )}
+              >
+                {b === "ALL" ? "All Branches" : b.replace(/[-_]/g, ' ')}
+              </button>
+            ))}
+            <div className="bg-gray-50 border border-gray-200 px-4 py-1.5 rounded-full text-xs font-bold text-dark-700">
+              {filteredCustomers.length} Customers
             </div>
           </div>
         </div>

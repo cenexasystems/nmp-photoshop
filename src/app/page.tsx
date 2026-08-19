@@ -57,8 +57,9 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 name="password"
                 required
-                className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all text-dark-900"
+                className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-all text-dark-900 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
                 placeholder="••••••••"
+                style={{ WebkitAppearance: 'none' }}
               />
               <button
                 type="button"

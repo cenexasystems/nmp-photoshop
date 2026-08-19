@@ -100,10 +100,31 @@ export default function Home() {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // Generate Invoice ID
+    // Generate Sequential Invoice ID (NMG-2026-0001, 0002, ...)
     const year = new Date().getFullYear();
-    const randomChars = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const invoiceId = `NMG-${year}-${randomChars}`;
+    let invoiceId = `NMG-${year}-0001`;
+    try {
+      const prefix = `NMG-${year}-`;
+      const { data: lastOrders } = await supabase
+        .from('orders')
+        .select('id')
+        .like('id', `${prefix}%`)
+        .order('id', { ascending: false })
+        .limit(1);
+
+      if (lastOrders && lastOrders.length > 0) {
+        const lastId = lastOrders[0].id; // e.g. "NMG-2026-0047"
+        const lastNum = parseInt(lastId.replace(prefix, ''), 10);
+        if (!isNaN(lastNum)) {
+          const nextNum = lastNum + 1;
+          invoiceId = `${prefix}${String(nextNum).padStart(4, '0')}`;
+        }
+      }
+    } catch {
+      // fallback to random if query fails
+      const randomChars = Math.random().toString(36).substring(2, 7).toUpperCase();
+      invoiceId = `NMG-${year}-${randomChars}`;
+    }
     
     // Save to Supabase
     try {
