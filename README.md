@@ -1,7 +1,7 @@
 # Studio POS
 
 A modern, high-fidelity Point of Sale (POS) application designed specifically for beauty studios and service-based operations. Built with Next.js, this application features a sleek UI with smooth animations, comprehensive role-based access control, and robust order management.
-For a Awesome and Sweet client. She Never asked for extra changes and never tortured us 
+For a Awesome and Sweet client. She Never asked for extra changes and never tortured us . Again she never disturned the developers.
 
 ## 🌟 Features
 
