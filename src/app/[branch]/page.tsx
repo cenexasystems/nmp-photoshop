@@ -102,29 +102,31 @@ export default function Home() {
 
     // Generate Sequential Invoice ID (NMG-2026-0001, 0002, ...)
     const year = new Date().getFullYear();
-    let invoiceId = `NMG-${year}-0001`;
-    try {
-      const prefix = `NMG-${year}-`;
+    const prefix = `NMG-${year}-`;
+
+    const getNextInvoiceId = async (): Promise<string> => {
+      // Use created_at ordering (more reliable than text-sort on ID)
       const { data: lastOrders } = await supabase
         .from('orders')
-        .select('id')
+        .select('id, created_at')
         .like('id', `${prefix}%`)
-        .order('id', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1);
 
       if (lastOrders && lastOrders.length > 0) {
         const lastId = lastOrders[0].id; // e.g. "NMG-2026-0047"
         const lastNum = parseInt(lastId.replace(prefix, ''), 10);
         if (!isNaN(lastNum)) {
-          const nextNum = lastNum + 1;
-          invoiceId = `${prefix}${String(nextNum).padStart(4, '0')}`;
+          return `${prefix}${String(lastNum + 1).padStart(4, '0')}`;
         }
       }
-    } catch {
-      // fallback to random if query fails
-      const randomChars = Math.random().toString(36).substring(2, 7).toUpperCase();
-      invoiceId = `NMG-${year}-${randomChars}`;
-    }
+      return `${prefix}0001`;
+    };
+
+    let invoiceId = await getNextInvoiceId().catch(() => {
+      // Network fallback — use timestamp suffix to avoid collision
+      return `${prefix}${Date.now().toString().slice(-4)}`;
+    });
     
     // Save to Supabase
     try {
@@ -174,7 +176,17 @@ export default function Home() {
       };
       
       const { error: orderError } = await supabase.from('orders').insert(newOrder);
-      if (orderError) throw orderError;
+      if (orderError) {
+        // If duplicate key — refetch and retry once with the correct next number
+        if ((orderError as any).code === '23505') {
+          invoiceId = await getNextInvoiceId();
+          newOrder.id = invoiceId;
+          const { error: retryError } = await supabase.from('orders').insert(newOrder);
+          if (retryError) throw retryError;
+        } else {
+          throw orderError;
+        }
+      }
 
       if (amountPaidValue > 0) {
         const { error: paymentError } = await supabase.from('payments').insert({
