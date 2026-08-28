@@ -85,6 +85,13 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
   const amountPaid = order.amount_paid || 0;
   const restToPay = Math.max(0, totalAmount - amountPaid);
 
+  const BRANCH_INFO: Record<string, { name: string; phone: string }> = {
+    "chennai-main": { name: "Sarada College Road", phone: "90877 09117, 96299 09117" },
+    "bangalore-hub": { name: "Puthuroad", phone: "96299 19117, 96299 09115" },
+    "mumbai-central": { name: "Old Bustand", phone: "96299 09115, 96299 09117" },
+  };
+  const branch = BRANCH_INFO[order.branch_id as string] || BRANCH_INFO["chennai-main"];
+
   return (
     <div className="min-h-screen bg-gray-50 text-dark-900 font-sans py-12 px-4 print:p-0 print:bg-white flex flex-col items-center">
       <style>{`
@@ -146,11 +153,11 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-dark-600 font-semibold">
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-gray-600 shrink-0" />
-              <span>Branch: {order.branch_id ? order.branch_id.replace('-', ' ').toUpperCase() : 'CHENNAI MAIN'}</span>
+              <span>Branch: {branch.name}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5 text-gray-600 shrink-0" />
-              <span>+91 99999 99999</span>
+              <span>{branch.phone}</span>
             </div>
           </div>
         </div>

@@ -129,6 +129,7 @@ export default function Home() {
     });
     
     // Save to Supabase
+    const amountPaidValue = amountStatus === "Completed" ? finalTotal : (amountStatus === "Partial" ? parseFloat(amountPaid) : 0);
     try {
       let customerId = null;
       if (customerPhone) {
@@ -154,8 +155,6 @@ export default function Home() {
           if (newCustomer) customerId = newCustomer.id;
         }
       }
-
-      const amountPaidValue = amountStatus === "Completed" ? finalTotal : (amountStatus === "Partial" ? parseFloat(amountPaid) : 0);
       
       const newOrder = {
         id: invoiceId,
@@ -219,37 +218,28 @@ export default function Home() {
     
     if (sendWhatsApp) {
       const target = customerPhone.length === 10 ? customerPhone : "7904199050";
-      const cameraEmoji = String.fromCodePoint(0x1F4F8);
-      const sparkleEmoji = String.fromCodePoint(0x2728);
-      
-      let text = `*New Order from NMG Photo Park* ${cameraEmoji}\n\n`;
-      text += `*Invoice ID:* ${invoiceId}\n`;
-      text += `*Customer:* ${customerName || 'Walk-in'}\n`;
-      text += `*Mobile:* ${customerPhone || 'N/A'}\n`;
-      text += `*Staff:* ${staffName}\n`;
-      if (customerDate) text += `*Date:* ${customerDate}\n`;
-      
-      text += `\n*Items:*\n`;
+
+      let text = `Invoice ID: ${invoiceId}\n`;
+      if (customerDate) text += `Date: ${customerDate}\n`;
+      text += `Customer: ${customerName || 'Walk-in'}\n`;
+      text += `Mobile: ${customerPhone || 'N/A'}\n`;
+      text += `Staff: ${staffName}\n\n\n`;
+
+      text += `Items:\n`;
       cart.forEach((item, i) => {
-        text += `${i+1}. *${item.product}* - *₹${item.amount}*\n`;
+        text += `${i+1}. ${item.product} - ₹${item.amount}\n`;
         if (item.details) text += `   └ Details: ${item.details}\n`;
         if (item.deliveryDate) text += `   └ Delivery Date: ${item.deliveryDate}\n`;
         if (item.idNumber) text += `   └ ID: ${item.idNumber}\n`;
       });
-      
-      text += `\n*Payment Status:* ${amountStatus}\n`;
-      if (discountAmt > 0) {
-        text += `*Subtotal:* ₹${cartTotal.toLocaleString()}\n`;
-        const discDesc = discountType === "percent" ? `${discountValue}%` : `₹${discountValue} flat`;
-        text += `*Discount:* ${discDesc} (-₹${discountAmt.toLocaleString()})\n`;
-      }
-      text += `*Total Amount:* ₹${finalTotal.toLocaleString()}\n`;
-      text += `*Delivery Status:* ${deliveryStatus}\n`;
-      if (notes) text += `*Notes:* ${notes}\n`;
-      
-      const invoiceUrl = `${window.location.origin}/invoice/${invoiceId}`;
-      text += `\n*View Invoice:* ${invoiceUrl}\n`;
-      text += `\nThank you for choosing us! ${sparkleEmoji}`;
+
+      text += `\n\nTotal Amount: ₹${finalTotal.toLocaleString()}\n`;
+      text += `Advance Paid: ${amountPaidValue}\n`;
+      const balance = Math.max(0, finalTotal - amountPaidValue);
+      text += `*Balance Payment:*${balance}\n\n`;
+
+      text += `Delivery Status: ${deliveryStatus}\n`;
+      if (notes) text += `Notes: ${notes}\n`;
 
       const encodedMessage = encodeURIComponent(text);
       window.open(`https://api.whatsapp.com/send/?phone=91${target}&text=${encodedMessage}`, "_blank");
