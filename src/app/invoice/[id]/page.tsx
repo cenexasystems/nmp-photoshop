@@ -164,21 +164,11 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
         {/* Invoice Meta Data */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 p-8 sm:p-12 print:p-4 print:gap-4 border-b border-gray-100">
+          
+          {/* Left Column: Order Info */}
           <div>
-            <h3 className="text-[10px] font-bold text-dark-400 uppercase tracking-[0.2em] mb-3">Billed To</h3>
-            <p className="text-base font-bold text-dark-900">{order.customer_name || "Walk-in Customer"}</p>
-            {order.customer_phone && (
-              <p className="text-sm text-dark-600 font-semibold mt-1">+91 {order.customer_phone}</p>
-            )}
-            {order.source && (
-              <span className="inline-block mt-2 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 text-dark-800">
-                Source: {order.source}
-              </span>
-            )}
-          </div>
-          <div className="sm:text-right flex flex-col sm:items-end">
-            <h3 className="text-[10px] font-bold text-dark-400 uppercase tracking-[0.2em] mb-3 self-start sm:self-auto">Order Info</h3>
-            <div className="space-y-1.5 text-xs text-left sm:text-right">
+            <h3 className="text-[10px] font-bold text-dark-400 uppercase tracking-[0.2em] mb-3">Order Info</h3>
+            <div className="space-y-1.5 text-xs text-left">
               <div>
                 <span className="text-dark-400 font-bold">Billed Date: </span>
                 <span className="text-dark-900 font-black">{new Date(order.date || order.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
@@ -197,6 +187,21 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
               )}
             </div>
           </div>
+
+          {/* Right Column: Customer Info */}
+          <div className="sm:text-right flex flex-col sm:items-end">
+            <h3 className="text-[10px] font-bold text-dark-400 uppercase tracking-[0.2em] mb-3 self-start sm:self-auto">Billed To</h3>
+            <p className="text-base font-bold text-dark-900">{order.customer_name || "Walk-in Customer"}</p>
+            {order.customer_phone && (
+              <p className="text-sm text-dark-600 font-semibold mt-1">+91 {order.customer_phone}</p>
+            )}
+            {order.source && (
+              <span className="inline-block mt-2 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 text-dark-800">
+                Source: {order.source}
+              </span>
+            )}
+          </div>
+          
         </div>
 
         {/* Items Table */}

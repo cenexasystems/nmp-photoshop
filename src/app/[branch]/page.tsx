@@ -241,6 +241,9 @@ export default function Home() {
       text += `Delivery Status: ${deliveryStatus}\n`;
       if (notes) text += `Notes: ${notes}\n`;
 
+      const invoiceUrl = `${window.location.origin}/invoice/${invoiceId}`;
+      text += `\nView Invoice: ${invoiceUrl}\n`;
+
       const encodedMessage = encodeURIComponent(text);
       window.open(`https://api.whatsapp.com/send/?phone=91${target}&text=${encodedMessage}`, "_blank");
     }
