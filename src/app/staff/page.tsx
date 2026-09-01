@@ -29,7 +29,7 @@ export default function BranchSelectionPage() {
       <div className="w-full max-w-2xl text-center mb-10">
         <img src="/logo.png" alt="NMG Logo" className="w-16 h-16 object-contain mx-auto rounded-2xl shadow-lg mb-6" />
         <h1 className="text-3xl md:text-4xl font-bold tracking-widest uppercase text-dark-900 mb-3">
-          NMG Photo Park POS
+          NMG PHOTOPARK POS
         </h1>
         <p className="text-sm text-dark-500 font-bold uppercase tracking-[0.2em]">
           Select your active branch to begin billing

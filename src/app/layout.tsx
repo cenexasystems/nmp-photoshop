@@ -5,12 +5,12 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NMG Photo Park",
+  title: "NMG PHOTOPARK",
   description: "Premium Point of Sale System",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "NMG Photo Park",
+    title: "NMG PHOTOPARK",
   },
 };
 

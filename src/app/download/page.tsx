@@ -110,10 +110,10 @@ export default function DownloadPage() {
         
         {/* Left Side: App Branding & Action */}
         <div className="flex-1 text-center md:text-left flex flex-col items-center md:items-start">
-          <img src="/logo.png" alt="NMG Photo Park" className="w-24 h-24 object-contain rounded-2xl shadow-lg mb-8" />
+          <img src="/logo.png" alt="NMG PHOTOPARK" className="w-24 h-24 object-contain rounded-2xl shadow-lg mb-8" />
           
           <h1 className="text-3xl md:text-4xl font-bold tracking-widest uppercase text-dark-900 mb-4 text-center md:text-left">
-            NMG Photo Park
+            NMG PHOTOPARK
           </h1>
           
           <p className="text-sm text-dark-500 font-medium leading-relaxed mb-8 max-w-md text-center md:text-left">
@@ -248,7 +248,7 @@ export default function DownloadPage() {
                     Scroll down and tap <strong>Add to Home Screen</strong> <PlusSquare size={14} className="inline mx-1 text-dark-900" />.
                   </li>
                   <li>
-                    Verify the name <strong>NMG Photo Park</strong> and tap <strong>Add</strong> in the top-right corner.
+                    Verify the name <strong>NMG PHOTOPARK</strong> and tap <strong>Add</strong> in the top-right corner.
                   </li>
                 </ol>
               </div>
@@ -260,7 +260,7 @@ export default function DownloadPage() {
 
       {/* Footer Info */}
       <div className="max-w-4xl w-full mx-auto mt-12 text-center text-[10px] font-bold text-dark-400 uppercase tracking-widest">
-        NMG Photo Park is built with secure offline-first caching via Serwist.
+        NMG PHOTOPARK is built with secure offline-first caching via Serwist.
       </div>
     </div>
   );

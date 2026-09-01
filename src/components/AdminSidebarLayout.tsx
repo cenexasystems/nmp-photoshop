@@ -59,7 +59,7 @@ export function AdminSidebarLayout({ children }: { children: ReactNode }) {
             <img src="/logo.png" alt="NMG Logo" className="w-8 h-8 object-contain shrink-0 rounded-lg shadow-sm" />
             {(!isCollapsed || isMobileOpen) && (
               <div>
-                <h1 className="font-bold text-base tracking-wider uppercase text-white whitespace-nowrap">NMG Photo Park</h1>
+                <h1 className="font-bold text-base tracking-wider uppercase text-white whitespace-nowrap">NMG PHOTOPARK</h1>
                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 bg-gray-800 px-2 py-0.5 rounded-md inline-block">Admin Portal</p>
               </div>
             )}
@@ -138,7 +138,7 @@ export function AdminSidebarLayout({ children }: { children: ReactNode }) {
         <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 z-30">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NMG Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
-            <span className="font-bold tracking-widest uppercase text-sm text-dark-900">NMG Photo Park</span>
+            <span className="font-bold tracking-widest uppercase text-sm text-dark-900">NMG PHOTOPARK</span>
           </div>
           <button onClick={() => setIsMobileOpen(true)} className="p-2 text-dark-800 bg-gray-100 rounded-lg">
             <Menu size={24} strokeWidth={2} />
@@ -151,9 +151,9 @@ export function AdminSidebarLayout({ children }: { children: ReactNode }) {
           </div>
 
           <footer className="mt-8 pt-4 pb-2 border-t border-gray-200 text-[10px] font-bold text-dark-500 flex flex-col sm:flex-row items-center justify-between gap-2 px-2 max-w-7xl mx-auto w-full">
-            <div>© 2026 NMG Photo Park. All Rights Reserved</div>
+            <div>© 2026 NMG PHOTOPARK. All Rights Reserved</div>
             <div>Powered by <a href="https://www.cenexasystems.com" target="_blank" rel="noopener noreferrer" className="text-dark-900 font-extrabold hover:text-gray-600 hover:underline transition-colors">Cenexa Systems</a> © 2026</div>
-            <div className="uppercase tracking-widest text-gray-500 font-extrabold">NMG PHOTO PARK</div>
+            <div className="uppercase tracking-widest text-gray-500 font-extrabold">NMG PHOTOPARK</div>
           </footer>
         </div>
       </main>

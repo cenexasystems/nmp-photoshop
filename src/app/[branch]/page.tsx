@@ -17,6 +17,12 @@ const PAYMENT_MODES = ["Cash", "GPay", "Card"];
 const DELIVERY_STATUSES = ["Pending", "In Progress", "Delivered"];
 const AMOUNT_STATUSES = ["Pending", "Partial", "Completed"];
 
+const BRANCH_CODES: Record<string, string> = {
+  "chennai-main": "SCR",   // Sarada College Road
+  "bangalore-hub": "PUR",  // Puthur Road
+  "mumbai-central": "OBS", // Old Bustand
+};
+
 interface CartItem {
   id: number;
   product: string;
@@ -100,21 +106,21 @@ export default function Home() {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // Generate Sequential Invoice ID (NMG-2026-0001, 0002, ...)
-    const year = new Date().getFullYear();
-    const prefix = `NMG-${year}-`;
+    // Generate Sequential Invoice ID (NMG-SCR-0001, 0002, ...)
+    const branchCode = BRANCH_CODES[branchId] || branchId.toUpperCase();
+    const prefix = `NMG-${branchCode}-`; // e.g. NMG-SCR-, NMG-PUR-, NMG-OBS-
 
     const getNextInvoiceId = async (): Promise<string> => {
-      // Use created_at ordering (more reliable than text-sort on ID)
       const { data: lastOrders } = await supabase
         .from('orders')
         .select('id, created_at')
+        .eq('branch_id', branchId)        // scope the lookup to this branch only
         .like('id', `${prefix}%`)
         .order('created_at', { ascending: false })
         .limit(1);
 
       if (lastOrders && lastOrders.length > 0) {
-        const lastId = lastOrders[0].id; // e.g. "NMG-2026-0047"
+        const lastId = lastOrders[0].id;             // e.g. "NMG-SCR-0047"
         const lastNum = parseInt(lastId.replace(prefix, ''), 10);
         if (!isNaN(lastNum)) {
           return `${prefix}${String(lastNum + 1).padStart(4, '0')}`;
@@ -124,7 +130,6 @@ export default function Home() {
     };
 
     let invoiceId = await getNextInvoiceId().catch(() => {
-      // Network fallback — use timestamp suffix to avoid collision
       return `${prefix}${Date.now().toString().slice(-4)}`;
     });
     

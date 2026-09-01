@@ -33,7 +33,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         setError(true);
       } else {
         setOrder(data);
-        document.title = `Invoice ${data.id} - NMG PhotoShop`;
+        document.title = `Invoice ${data.id} - NMG PHOTOPARK`;
 
         // Fetch payment ledger history
         const { data: payData } = await supabase
@@ -146,8 +146,8 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         
         {/* Header Section */}
         <div className="bg-gray-50/80 border-b border-gray-200 p-8 sm:p-12 print:p-4 flex flex-col items-center text-center">
-          <img src="/logo.png" alt="NMG Photo Park" className="w-16 h-16 object-contain mb-3" />
-          <h1 className="text-3xl font-black text-dark-900 tracking-tight">NMG Photo Park</h1>
+          <img src="/logo.png" alt="NMG PHOTOPARK" className="w-16 h-16 object-contain mb-3" />
+          <h1 className="text-3xl font-black text-dark-900 tracking-tight">NMG PHOTOPARK</h1>
           <p className="text-xs text-dark-500 font-bold tracking-wider mt-1 mb-4">INVOICE #{order.id}</p>
           
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-dark-600 font-semibold">
@@ -296,8 +296,8 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         
         {/* Footer */}
         <div className="border-t border-gray-100 p-6 print:p-2 text-center bg-gray-50/80 flex flex-col items-center justify-center gap-1.5">
-          <p className="text-xs font-bold text-dark-900 tracking-wider uppercase">Thank you for choosing NMG Photo Park!</p>
-          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-[0.15em]">NMG Photo Park POS</p>
+          <p className="text-xs font-bold text-dark-900 tracking-wider uppercase">Thank you for choosing NMG PHOTOPARK!</p>
+          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-[0.15em]">NMG PHOTOPARK POS</p>
         </div>
 
       </div>
