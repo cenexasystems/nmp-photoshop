@@ -11,6 +11,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const BRANCH_DISPLAY_NAMES: Record<string, string> = {
+  "chennai-main": "Sarada College Road",
+  "bangalore-hub": "Puthur Road",
+  "mumbai-central": "Old Bustand",
+};
+
 interface OrderItem {
   id: string;
   customer: string;
@@ -178,7 +184,7 @@ export default function CustomerOrdersPage() {
                     : "bg-gray-50 text-dark-700 border-gray-200 hover:bg-gray-100"
                 )}
               >
-                {b === "ALL" ? "All Branches" : b.replace(/[-_]/g, ' ')}
+                {b === "ALL" ? "All Branches" : (BRANCH_DISPLAY_NAMES[b] || b.replace(/[-_]/g, ' '))}
               </button>
             ))}
             <div className="bg-gray-50 border border-gray-200 px-4 py-1.5 rounded-full text-xs font-bold text-dark-700">

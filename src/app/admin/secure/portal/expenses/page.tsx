@@ -24,10 +24,14 @@ const CATEGORIES = [
 ];
 
 const BRANCHES = [
-  { id: "chennai-main", label: "Chennai Main" },
-  { id: "bangalore-hub", label: "Bangalore Hub" },
-  { id: "mumbai-central", label: "Mumbai Central" }
+  { id: "chennai-main", label: "Sarada College Road" },
+  { id: "bangalore-hub", label: "Puthur Road" },
+  { id: "mumbai-central", label: "Old Bustand" }
 ];
+
+const BRANCH_DISPLAY_NAMES: Record<string, string> = Object.fromEntries(
+  BRANCHES.map(b => [b.id, b.label])
+);
 
 export default function ExpensesPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -352,7 +356,7 @@ export default function ExpensesPage() {
                           )}
                           {exp.branch_id && (
                             <span className="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 text-[9px] font-bold uppercase rounded-full tracking-wider">
-                              {exp.branch_id.replace(/-/g, ' ')}
+                              {(BRANCH_DISPLAY_NAMES[exp.branch_id] || exp.branch_id.replace(/-/g, ' '))}
                             </span>
                           )}
                         </div>

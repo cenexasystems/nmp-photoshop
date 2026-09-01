@@ -25,6 +25,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const BRANCH_DISPLAY_NAMES: Record<string, string> = {
+  "chennai-main": "Sarada College Road",
+  "bangalore-hub": "Puthur Road",
+  "mumbai-central": "Old Bustand",
+};
+
 export default function BranchDashboardPage({ params }: { params: Promise<{ branch: string }> }) {
   const { branch } = use(params);
   const [orders, setOrders] = useState<any[]>([]);
@@ -32,7 +38,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
   const [loading, setLoading] = useState(true);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const branchName = useMemo(() => branch.replace(/-/g, ' ').toUpperCase(), [branch]);
+  const branchName = useMemo(() => (BRANCH_DISPLAY_NAMES[branch] || branch.replace(/-/g, ' ')).toUpperCase(), [branch]);
 
   useEffect(() => {
     async function loadData() {

@@ -30,6 +30,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const BRANCH_DISPLAY_NAMES: Record<string, string> = {
+  "chennai-main": "Sarada College Road",
+  "bangalore-hub": "Puthur Road",
+  "mumbai-central": "Old Bustand"
+};
+
 export interface Order {
   id: string;
   customer: string;
@@ -423,7 +429,7 @@ export default function AnalyticsPage() {
 
       return {
         branchId: bId,
-        branchName: bId.replace(/[-_]/g, ' ').toUpperCase(),
+        branchName: (BRANCH_DISPLAY_NAMES[bId] || bId.replace(/[-_]/g, ' ')).toUpperCase(),
         totalOrders: bOrders.length,
         completedBills: bCompleted.length,
         totalRevenue: bTotalRevenue,
@@ -661,7 +667,7 @@ export default function AnalyticsPage() {
               <option value="ALL">All Branches</option>
               {branchesList.map(b => (
                 <option key={b} value={b}>
-                  {b.replace('-', ' ').toUpperCase()}
+                  {(BRANCH_DISPLAY_NAMES[b] || b.replace('-', ' ')).toUpperCase()}
                 </option>
               ))}
             </select>

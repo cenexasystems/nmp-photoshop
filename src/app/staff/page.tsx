@@ -11,9 +11,9 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const BRANCHES = [
-  { id: "chennai-main", name: "Chennai Main", location: "T. Nagar" },
-  { id: "bangalore-hub", name: "Bangalore Hub", location: "Indiranagar" },
-  { id: "mumbai-central", name: "Mumbai Central", location: "Andheri West" },
+  { id: "chennai-main", name: "Sarada College Road", location: "Sarada College Road" },
+  { id: "bangalore-hub", name: "Puthur Road", location: "Puthur Road" },
+  { id: "mumbai-central", name: "Old Bustand", location: "Old Bustand" },
 ];
 
 export default function BranchSelectionPage() {

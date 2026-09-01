@@ -87,7 +87,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
   const BRANCH_INFO: Record<string, { name: string; phone: string }> = {
     "chennai-main": { name: "Sarada College Road", phone: "90877 09117, 96299 09117" },
-    "bangalore-hub": { name: "Puthuroad", phone: "96299 19117, 96299 09115" },
+    "bangalore-hub": { name: "Puthur Road", phone: "96299 19117, 96299 09115" },
     "mumbai-central": { name: "Old Bustand", phone: "96299 09115, 96299 09117" },
   };
   const branch = BRANCH_INFO[order.branch_id as string] || BRANCH_INFO["chennai-main"];

@@ -22,6 +22,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const BRANCH_DISPLAY_NAMES: Record<string, string> = {
+  "chennai-main": "Sarada College Road",
+  "bangalore-hub": "Puthur Road",
+  "mumbai-central": "Old Bustand",
+};
+
 export function SidebarLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -63,7 +69,7 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
             {(!isCollapsed || isMobileOpen) && (
               <div>
                 <h1 className="font-bold text-base tracking-wider uppercase text-white whitespace-nowrap">NMG PHOTOPARK</h1>
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 bg-gray-800 px-2 py-0.5 rounded-md inline-block">{branch.replace(/-/g, ' ')} Branch</p>
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 bg-gray-800 px-2 py-0.5 rounded-md inline-block">{(BRANCH_DISPLAY_NAMES[branch] || branch.replace(/-/g, ' '))} Branch</p>
               </div>
             )}
           </div>
