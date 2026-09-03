@@ -1,7 +1,7 @@
 "use client";
 
 import { SidebarLayout } from "@/components/SidebarLayout";
-import { Search, Download, X, Lock, CheckCircle2, CreditCard, Banknote, Truck, ExternalLink, Printer } from "lucide-react";
+import { Search, Download, X, Lock, CheckCircle2, CreditCard, Banknote, Truck, ExternalLink, Printer, MessageCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -377,6 +377,30 @@ export default function HistoryPage() {
     document.body.removeChild(link);
   };
 
+  const sendWhatsApp = (order: Order) => {
+    const target = order.phone?.length === 10 ? order.phone : "7904199050";
+    const restToPay = Math.max(0, order.total - order.amountPaid);
+    const invoiceUrl = `${window.location.origin}/invoice/${order.id}`;
+
+    let text = `*NMG PHOTOPARK — Invoice*\n`;
+    text += `Invoice ID: ${order.id}\n`;
+    text += `Date: ${order.date}\n`;
+    text += `Customer: ${order.customer}\n`;
+    text += `Mobile: ${order.phone || 'N/A'}\n\n`;
+    text += `Product: ${order.product}\n`;
+    if (order.details) text += `Details: ${order.details}\n`;
+    text += `\n`;
+    text += `Total Amount: ₹${order.total.toLocaleString()}\n`;
+    if (order.amountPaid > 0) text += `Amount Paid: ₹${order.amountPaid.toLocaleString()}\n`;
+    if (restToPay > 0) text += `*Balance Due: ₹${restToPay.toLocaleString()}*\n`;
+    text += `Payment Status: ${order.status}\n`;
+    text += `\n`;
+    text += `View Invoice: ${invoiceUrl}\n`;
+
+    const encoded = encodeURIComponent(text);
+    window.open(`https://api.whatsapp.com/send/?phone=91${target}&text=${encoded}`, "_blank");
+  };
+
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       // Global Search Filter
@@ -656,6 +680,17 @@ export default function HistoryPage() {
                               </button>
                             )}
 
+                            {order.phone && (
+                              <button
+                                onClick={() => sendWhatsApp(order)}
+                                title="Send invoice via WhatsApp"
+                                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-green-300 bg-green-50 hover:bg-green-100 text-green-900 shadow-sm transition-colors cursor-pointer"
+                              >
+                                <MessageCircle size={12} />
+                                WhatsApp
+                              </button>
+                            )}
+
                             <button 
                               onClick={() => setSelectedOrder(order)}
                               className="text-[10px] font-bold text-gray-700 hover:text-dark-900 uppercase tracking-widest transition-colors ml-1"
@@ -805,6 +840,14 @@ export default function HistoryPage() {
                 >
                   Print Invoice <ExternalLink size={11} />
                 </Link>
+                {selectedOrder.phone && (
+                  <button
+                    onClick={() => sendWhatsApp(selectedOrder)}
+                    className="text-[10px] font-bold text-green-700 hover:text-green-900 uppercase tracking-widest flex items-center gap-1 bg-green-50 px-2.5 py-1 rounded-full border border-green-200 transition-colors"
+                  >
+                    <MessageCircle size={11} /> WhatsApp
+                  </button>
+                )}
               </div>
               <button 
                 onClick={() => setSelectedOrder(null)}
