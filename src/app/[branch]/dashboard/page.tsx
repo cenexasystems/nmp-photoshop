@@ -335,7 +335,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
                           #{ord.id.slice(-4)}
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-dark-900">{ord.customer || "Walk-in Customer"}</div>
+                          <div className="text-xs font-bold text-dark-900">{ord.customer_name || "Walk-in Customer"}</div>
                           <div className="text-[10px] text-dark-500 font-medium">{ord.product || "Standard Service"} • {ord.date}</div>
                         </div>
                       </div>
