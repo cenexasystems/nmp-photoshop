@@ -52,9 +52,9 @@ export default function CustomerOrdersPage() {
   const [selectedCustomerGroup, setSelectedCustomerGroup] = useState<CustomerGroup | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Derive branch list from loaded orders
+  // Always show all known branches, plus any additional ones found in data
   const branchList = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(["chennai-main", "bangalore-hub", "mumbai-central"]);
     allOrders.forEach(o => { if (o.branchId) set.add(o.branchId); });
     return Array.from(set).sort();
   }, [allOrders]);
