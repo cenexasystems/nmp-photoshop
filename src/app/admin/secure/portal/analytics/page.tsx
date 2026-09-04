@@ -205,16 +205,16 @@ export default function AnalyticsPage() {
     }
   };
 
-  // Branch list dynamically compiled
+  // Branch list — always includes all known branches, plus any extra found in data
   const branchesList = useMemo(() => {
     const set = new Set<string>();
+    // Always show all three known branches regardless of data
+    set.add("chennai-main");
+    set.add("bangalore-hub");
+    set.add("mumbai-central");
+    // Also add any additional branches found in the data
     orders.forEach(o => { if (o.branchId) set.add(o.branchId); });
     expenses.forEach(e => { if (e.branch_id) set.add(e.branch_id); });
-    if (set.size === 0) {
-      set.add("chennai-main");
-      set.add("bangalore-hub");
-      set.add("mumbai-central");
-    }
     return Array.from(set);
   }, [orders, expenses]);
 
