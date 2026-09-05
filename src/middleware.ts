@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Ignore static assets, api routes, Next.js internals
@@ -28,15 +28,21 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow public access to download and invoice pages
+  if (pathname === "/download" || pathname.startsWith("/invoice/")) {
+    return NextResponse.next();
+  }
+
   // Protected pages (staff branch pages, history, etc.)
-  if (pathname !== "/download") {
-    if (!authRole) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
+  if (!authRole) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();
 }
+
+// Keep proxy export for backwards compatibility if needed elsewhere
+export const proxy = middleware;
 
 export const config = {
   matcher: [
