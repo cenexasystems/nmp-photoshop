@@ -260,8 +260,21 @@ export default function BranchExpensesPage({ params }: { params: Promise<{ branc
                         <div className="text-[10px] text-dark-500 font-medium mt-0.5">{exp.date} • {exp.payment_mode}</div>
                         {exp.notes && <div className="text-[10px] text-dark-400 italic mt-1 font-semibold">{exp.notes}</div>}
                       </div>
-                      <div className="text-sm font-black text-red-600">
-                        -₹{exp.amount}
+                      <div className="text-right">
+                        <div className="text-sm font-black text-red-600">
+                          -₹{exp.amount}
+                        </div>
+                        <button 
+                          onClick={async () => {
+                            if (!confirm("Are you sure you want to delete this expense?")) return;
+                            const { error } = await supabase.from('expenses').delete().eq('id', exp.id);
+                            if (error) alert("Failed to delete: " + error.message);
+                            else loadExpenses();
+                          }}
+                          className="text-[9px] text-red-400 hover:text-red-700 uppercase tracking-widest font-bold mt-1.5 transition-colors"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))}
