@@ -1,7 +1,7 @@
 "use client";
 
 import { SidebarLayout } from "@/components/SidebarLayout";
-import { Search, Download, X, Lock, CheckCircle2, CreditCard, Banknote, Truck, ExternalLink, Printer, MessageCircle } from "lucide-react";
+import { Search, Download, X, Lock, CheckCircle2, CreditCard, Banknote, Truck, ExternalLink, Printer, MessageCircle, Trash2 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -698,23 +698,21 @@ export default function HistoryPage() {
                               Details →
                             </button>
 
-                            {isEditable && (
-                              <button
-                                onClick={async () => {
-                                  if (!confirm(`Delete order ${order.id}? This will also delete its payments and items. Cannot be undone.`)) return;
-                                  // cascade delete logic handled client side just in case
-                                  await supabase.from('payments').delete().eq('order_id', order.id);
-                                  await supabase.from('order_items').delete().eq('order_id', order.id);
-                                  const { error } = await supabase.from('orders').delete().eq('id', order.id);
-                                  if (error) alert("Error deleting order: " + error.message);
-                                  else setOrders(prev => prev.filter(o => o.id !== order.id));
-                                }}
-                                title="Delete Order"
-                                className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-widest transition-colors ml-2"
-                              >
-                                Delete
-                              </button>
-                            )}
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Delete order ${order.id}? This will also delete its payments and items. Cannot be undone.`)) return;
+                                // cascade delete logic handled client side just in case
+                                await supabase.from('payments').delete().eq('order_id', order.id);
+                                await supabase.from('order_items').delete().eq('order_id', order.id);
+                                const { error } = await supabase.from('orders').delete().eq('id', order.id);
+                                if (error) alert("Error deleting order: " + error.message);
+                                else setOrders(prev => prev.filter(o => o.id !== order.id));
+                              }}
+                              title="Delete Order"
+                              className="text-red-400 hover:text-red-600 transition-colors ml-2 p-1.5 rounded hover:bg-red-50 flex items-center justify-center shrink-0"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </td>
                       </tr>

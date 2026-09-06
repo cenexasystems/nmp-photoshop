@@ -1,7 +1,7 @@
 "use client";
 
 import { SidebarLayout } from "@/components/SidebarLayout";
-import { Wallet, Search } from "lucide-react";
+import { Wallet, Search, Trash2 } from "lucide-react";
 import { useState, useEffect, useMemo, use } from "react";
 import { supabase } from "@/lib/supabase";
 import { clsx, type ClassValue } from "clsx";
@@ -260,7 +260,7 @@ export default function BranchExpensesPage({ params }: { params: Promise<{ branc
                         <div className="text-[10px] text-dark-500 font-medium mt-0.5">{exp.date} • {exp.payment_mode}</div>
                         {exp.notes && <div className="text-[10px] text-dark-400 italic mt-1 font-semibold">{exp.notes}</div>}
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-3">
                         <div className="text-sm font-black text-red-600">
                           -₹{exp.amount}
                         </div>
@@ -271,9 +271,10 @@ export default function BranchExpensesPage({ params }: { params: Promise<{ branc
                             if (error) alert("Failed to delete: " + error.message);
                             else loadExpenses();
                           }}
-                          className="text-[9px] text-red-400 hover:text-red-700 uppercase tracking-widest font-bold mt-1.5 transition-colors"
+                          title="Delete Expense"
+                          className="text-red-400 hover:text-red-600 transition-colors p-1.5 rounded hover:bg-red-50 flex items-center justify-center shrink-0"
                         >
-                          Delete
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
