@@ -35,6 +35,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
   const { branch } = use(params);
   const [orders, setOrders] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [todayPayments, setTodayPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -57,8 +58,23 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
         .eq('branch_id', branch)
         .order('date', { ascending: false });
 
+      // Fetch TODAY's payments across all orders in this branch
+      // recorded_at is a timestamp, so filter using date range
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const { data: paymentsData } = await supabase
+        .from('payments')
+        .select('amount, payment_mode, order_id, orders!inner(branch_id)')
+        .eq('orders.branch_id', branch)
+        .gte('recorded_at', todayStart.toISOString())
+        .lte('recorded_at', todayEnd.toISOString());
+
       if (ordersData) setOrders(ordersData);
       if (expensesData) setExpenses(expensesData);
+      if (paymentsData) setTodayPayments(paymentsData);
       setLoading(false);
     }
     loadData();
@@ -73,32 +89,35 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
     return expenses.filter(e => e.date === todayStr);
   }, [expenses, todayStr]);
 
+  // todayPaidOrders still used for "N payments collected today" label
   const todayPaidOrders = useMemo(() => {
     return todayOrders.filter(o => o.payment_status === "Paid" || (o.amount_paid || 0) > 0);
   }, [todayOrders]);
 
+  // Revenue = SUM of actual payment amounts received today (from payments table)
+  // This correctly counts partial/follow-up payments on older orders
   const todayRevenue = useMemo(() => {
-    return todayPaidOrders.reduce((sum, o) => sum + (Number(o.amount_paid) || Number(o.total) || 0), 0);
-  }, [todayPaidOrders]);
+    return todayPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  }, [todayPayments]);
 
   const todayCashSales = useMemo(() => {
-    return todayPaidOrders.reduce((sum, o) => {
-      if ((o.payment_mode || "").toLowerCase().includes("cash")) {
-        return sum + (Number(o.amount_paid) || Number(o.total) || 0);
+    return todayPayments.reduce((sum, p) => {
+      if ((p.payment_mode || "").toLowerCase().includes("cash")) {
+        return sum + (Number(p.amount) || 0);
       }
       return sum;
     }, 0);
-  }, [todayPaidOrders]);
+  }, [todayPayments]);
 
   const todayGPaySales = useMemo(() => {
-    return todayPaidOrders.reduce((sum, o) => {
-      const mode = (o.payment_mode || "").toLowerCase();
+    return todayPayments.reduce((sum, p) => {
+      const mode = (p.payment_mode || "").toLowerCase();
       if (mode.includes("gpay") || mode.includes("card") || mode.includes("upi") || mode.includes("online") || mode.includes("phonepe")) {
-        return sum + (Number(o.amount_paid) || Number(o.total) || 0);
+        return sum + (Number(p.amount) || 0);
       }
       return sum;
     }, 0);
-  }, [todayPaidOrders]);
+  }, [todayPayments]);
 
   const todayExpenseCash = useMemo(() => {
     return todayExpenses
@@ -184,7 +203,7 @@ export default function BranchDashboardPage({ params }: { params: Promise<{ bran
             <div>
               <div className="text-2xl font-black text-dark-900">₹{todayRevenue.toLocaleString()}</div>
               <div className="text-[10px] font-bold text-dark-400 mt-1 uppercase tracking-wider">
-                {todayPaidOrders.length} payments collected today
+                {todayPayments.length} payments collected today
               </div>
             </div>
           </div>
