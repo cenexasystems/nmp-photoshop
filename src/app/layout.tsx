@@ -8,6 +8,27 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://nmg-photoshop.vercel.app"),
   title: "NMG PHOTOPARK",
   description: "Premium Point of Sale System",
+  openGraph: {
+    title: "NMG PHOTOPARK",
+    description: "Premium Point of Sale System",
+    url: "https://nmg-photoshop.vercel.app",
+    siteName: "NMG PHOTOPARK",
+    images: [
+      {
+        url: "https://nmg-photoshop.vercel.app/logo.png",
+        width: 512,
+        height: 512,
+        alt: "NMG PHOTOPARK Logo",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NMG PHOTOPARK",
+    description: "Premium Point of Sale System",
+    images: ["https://nmg-photoshop.vercel.app/logo.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
