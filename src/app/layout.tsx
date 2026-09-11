@@ -5,6 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://nmg-photoshop.vercel.app"),
   title: "NMG PHOTOPARK",
   description: "Premium Point of Sale System",
   appleWebApp: {
