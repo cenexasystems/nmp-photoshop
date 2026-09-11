@@ -57,6 +57,9 @@ export default function Home() {
   const [staffName, setStaffName] = useState("");
   const [amountStatus, setAmountStatus] = useState(AMOUNT_STATUSES[2]);
   const [paymentMode, setPaymentMode] = useState(PAYMENT_MODES[0]);
+  const [isSplit, setIsSplit] = useState(false);
+  const [splitCash, setSplitCash] = useState("");
+  const [splitGpay, setSplitGpay] = useState("");
   const [deliveryStatus, setDeliveryStatus] = useState(DELIVERY_STATUSES[0]);
   const [amountPaid, setAmountPaid] = useState("");
   const [notes, setNotes] = useState("");
@@ -101,6 +104,8 @@ export default function Home() {
     ? cartTotal * (parseFloat(discountValue) || 0) / 100
     : parseFloat(discountValue) || 0;
   const finalTotal = Math.max(0, cartTotal - discountAmt);
+  // Component-level so both the UI and handleSaveOrder can use it
+  const amountPaidValue = amountStatus === "Completed" ? finalTotal : (amountStatus === "Partial" ? parseFloat(amountPaid) || 0 : 0);
 
   const handleSaveOrder = async (sendWhatsApp: boolean) => {
     if (isSubmitting) return;
@@ -134,7 +139,16 @@ export default function Home() {
     });
     
     // Save to Supabase
-    const amountPaidValue = amountStatus === "Completed" ? finalTotal : (amountStatus === "Partial" ? parseFloat(amountPaid) : 0);
+    // (amountPaidValue is computed at component level above handleSaveOrder)
+    
+    // Split payment amounts
+    const splitCashAmt = isSplit ? (parseFloat(splitCash) || 0) : 0;
+    const splitGpayAmt = isSplit ? (parseFloat(splitGpay) || 0) : 0;
+    
+    // Determine payment_mode label for the order record
+    const effectivePaymentMode = amountStatus === "Pending" ? "N/A"
+      : isSplit ? "Mixed"
+      : paymentMode;
     try {
       let customerId = null;
       if (customerPhone) {
@@ -173,7 +187,7 @@ export default function Home() {
         total: finalTotal,
         amount_paid: amountPaidValue,
         payment_status: amountStatus === "Pending" ? "Unpaid" : (amountStatus === "Completed" ? "Paid" : "Partial"),
-        payment_mode: amountStatus === "Pending" ? "N/A" : paymentMode,
+        payment_mode: effectivePaymentMode,
         delivery_status: deliveryStatus,
         discount: discountAmt,
         notes: notes
@@ -193,12 +207,23 @@ export default function Home() {
       }
 
       if (amountPaidValue > 0) {
-        const { error: paymentError } = await supabase.from('payments').insert({
-          order_id: invoiceId,
-          amount: amountPaidValue,
-          payment_mode: amountStatus === "Pending" ? "N/A" : paymentMode
-        });
-        if (paymentError) throw paymentError;
+        if (isSplit) {
+          // Insert separate payment rows for Cash and GPay
+          const splitRows = [];
+          if (splitCashAmt > 0) splitRows.push({ order_id: invoiceId, amount: splitCashAmt, payment_mode: "Cash" });
+          if (splitGpayAmt > 0) splitRows.push({ order_id: invoiceId, amount: splitGpayAmt, payment_mode: "GPay" });
+          if (splitRows.length > 0) {
+            const { error: splitErr } = await supabase.from('payments').insert(splitRows);
+            if (splitErr) throw splitErr;
+          }
+        } else {
+          const { error: paymentError } = await supabase.from('payments').insert({
+            order_id: invoiceId,
+            amount: amountPaidValue,
+            payment_mode: effectivePaymentMode
+          });
+          if (paymentError) throw paymentError;
+        }
       }
 
       const orderItems = cart.map(item => ({
@@ -262,6 +287,9 @@ export default function Home() {
     setAmountPaid("");
     setNotes("");
     setDiscountValue("");
+    setIsSplit(false);
+    setSplitCash("");
+    setSplitGpay("");
     setIsSubmitting(false);
   };
   
@@ -543,24 +571,84 @@ export default function Home() {
                   )}
 
                   <div className={amountStatus !== "Partial" ? "col-span-1" : "col-span-2"}>
-                    <label className="block text-[10px] font-bold text-dark-500 mb-1.5 uppercase tracking-widest">Method</label>
-                    <select 
-                      value={paymentMode}
-                      onChange={(e) => setPaymentMode(e.target.value)}
-                      disabled={amountStatus === "Pending"}
-                      className={cn(
-                        "w-full rounded-lg px-2.5 py-2 outline-none text-xs font-bold uppercase tracking-wider transition-all",
-                        amountStatus === "Pending" 
-                          ? "bg-gray-100 border border-gray-200 text-dark-400 cursor-not-allowed opacity-60" 
-                          : "bg-gray-50 border border-gray-200 focus:border-gray-400 focus:bg-white text-dark-900"
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">Method</label>
+                      {amountStatus !== "Pending" && (
+                        <button
+                          type="button"
+                          onClick={() => { setIsSplit(!isSplit); setSplitCash(""); setSplitGpay(""); }}
+                          className={cn(
+                            "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border transition-colors",
+                            isSplit
+                              ? "bg-amber-100 text-amber-800 border-amber-300"
+                              : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+                          )}
+                        >
+                          {isSplit ? "✓ Split" : "+ Split"}
+                        </button>
                       )}
-                    >
-                      {amountStatus === "Pending" ? (
-                        <option value="N/A">N/A</option>
-                      ) : (
-                        PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)
-                      )}
-                    </select>
+                    </div>
+
+                    {isSplit && amountStatus !== "Pending" ? (
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="block text-[9px] font-bold text-emerald-700 mb-1 uppercase tracking-widest">Cash ₹</label>
+                          <input
+                            type="number"
+                            value={splitCash}
+                            onChange={(e) => setSplitCash(e.target.value)}
+                            placeholder="0"
+                            className="w-full bg-emerald-50 border border-emerald-200 focus:border-emerald-400 rounded-lg px-2.5 py-2 outline-none text-xs font-bold text-dark-900"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-[9px] font-bold text-blue-700 mb-1 uppercase tracking-widest">GPay ₹</label>
+                          <input
+                            type="number"
+                            value={splitGpay}
+                            onChange={(e) => setSplitGpay(e.target.value)}
+                            placeholder="0"
+                            className="w-full bg-blue-50 border border-blue-200 focus:border-blue-400 rounded-lg px-2.5 py-2 outline-none text-xs font-bold text-dark-900"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <select
+                        value={paymentMode}
+                        onChange={(e) => setPaymentMode(e.target.value)}
+                        disabled={amountStatus === "Pending"}
+                        className={cn(
+                          "w-full rounded-lg px-2.5 py-2 outline-none text-xs font-bold uppercase tracking-wider transition-all",
+                          amountStatus === "Pending"
+                            ? "bg-gray-100 border border-gray-200 text-dark-400 cursor-not-allowed opacity-60"
+                            : "bg-gray-50 border border-gray-200 focus:border-gray-400 focus:bg-white text-dark-900"
+                        )}
+                      >
+                        {amountStatus === "Pending" ? (
+                          <option value="N/A">N/A</option>
+                        ) : (
+                          PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)
+                        )}
+                      </select>
+                    )}
+
+                    {/* Show split total vs expected */}
+                    {isSplit && amountStatus !== "Pending" && (
+                      (() => {
+                        const splitTotal = (parseFloat(splitCash) || 0) + (parseFloat(splitGpay) || 0);
+                        const expected = amountPaidValue;
+                        const diff = splitTotal - expected;
+                        return (
+                          <div className={cn(
+                            "text-[9px] font-bold mt-1.5 text-right",
+                            Math.abs(diff) < 0.01 ? "text-emerald-600" : "text-red-600"
+                          )}>
+                            Split total: ₹{splitTotal.toLocaleString()} / ₹{expected.toLocaleString()}
+                            {Math.abs(diff) >= 0.01 && (diff > 0 ? ` (+₹${diff})` : ` (-₹${Math.abs(diff)})`)}
+                          </div>
+                        );
+                      })()
+                    )}
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold text-dark-500 mb-1.5 uppercase tracking-widest">Delivery Status</label>

@@ -102,6 +102,9 @@ export default function HistoryPage() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [discountWriteoff, setDiscountWriteoff] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
+  const [isSplitRecord, setIsSplitRecord] = useState(false);
+  const [splitCashRecord, setSplitCashRecord] = useState("");
+  const [splitGpayRecord, setSplitGpayRecord] = useState("");
   const [recordingPayment, setRecordingPayment] = useState(false);
 
   useEffect(() => {
@@ -232,6 +235,9 @@ export default function HistoryPage() {
     setPaymentAmount(restToPay.toString());
     setDiscountWriteoff("");
     setPaymentMode("Cash");
+    setIsSplitRecord(false);
+    setSplitCashRecord("");
+    setSplitGpayRecord("");
   };
 
   // Submit Payment Record
@@ -258,21 +264,34 @@ export default function HistoryPage() {
     const newStatus = newAmountPaid >= finalTotal ? "Paid" : "Partial";
     const statusLocked = newStatus === "Paid";
 
-    // Determine payment mode
+    // Determine payment mode for the order record
+    const splitCashAmt = isSplitRecord ? (parseFloat(splitCashRecord) || 0) : 0;
+    const splitGpayAmt = isSplitRecord ? (parseFloat(splitGpayRecord) || 0) : 0;
+
     const { data: existingPayData } = await supabase
       .from('payments')
       .select('payment_mode')
       .eq('order_id', paymentModalOrder.id);
     
-    const existingModes = (existingPayData || []).map(p => p.payment_mode);
-    const allModes = amount > 0 ? [...new Set([...existingModes, paymentMode])] : existingModes;
+    const existingModes = (existingPayData || []).map(p => p.payment_mode).filter(m => m !== "N/A");
+    const newModes = isSplitRecord
+      ? (splitCashAmt > 0 ? ["Cash"] : []).concat(splitGpayAmt > 0 ? ["GPay"] : [])
+      : (amount > 0 ? [paymentMode] : []);
+    const allModes = [...new Set([...existingModes, ...newModes])];
     const finalMode = allModes.length > 1 ? "Mixed" : (allModes[0] || paymentMode);
 
-    // Record in payments table if there's an actual payment amount
+    // Record in payments table
     if (amount > 0) {
-      await supabase
-        .from('payments')
-        .insert({ order_id: paymentModalOrder.id, amount, payment_mode: paymentMode });
+      if (isSplitRecord) {
+        const splitRows = [];
+        if (splitCashAmt > 0) splitRows.push({ order_id: paymentModalOrder.id, amount: splitCashAmt, payment_mode: "Cash" });
+        if (splitGpayAmt > 0) splitRows.push({ order_id: paymentModalOrder.id, amount: splitGpayAmt, payment_mode: "GPay" });
+        if (splitRows.length > 0) await supabase.from('payments').insert(splitRows);
+      } else {
+        await supabase
+          .from('payments')
+          .insert({ order_id: paymentModalOrder.id, amount, payment_mode: paymentMode });
+      }
     }
 
     // Update order totals
@@ -792,26 +811,82 @@ export default function HistoryPage() {
                     </div>
                   </div>
               <div>
-                <label className="block text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-1.5">
-                  Select Payment Mode <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["Cash", "GPay", "Card"].map(mode => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setPaymentMode(mode)}
-                      className={cn(
-                        "py-2 px-3 rounded-xl text-xs font-bold uppercase transition-all border text-center cursor-pointer",
-                        paymentMode === mode 
-                          ? "bg-dark-900 text-white border-dark-900 shadow-sm scale-[1.02]" 
-                          : "bg-white text-dark-700 border-gray-200 hover:bg-gray-100"
-                      )}
-                    >
-                      {mode}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest">
+                    Select Payment Mode <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { setIsSplitRecord(!isSplitRecord); setSplitCashRecord(""); setSplitGpayRecord(""); }}
+                    className={cn(
+                      "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border transition-colors",
+                      isSplitRecord
+                        ? "bg-amber-100 text-amber-800 border-amber-300"
+                        : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+                    )}
+                  >
+                    {isSplitRecord ? "✓ Split" : "+ Split"}
+                  </button>
                 </div>
+
+                {isSplitRecord ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-[9px] font-bold text-emerald-700 mb-1 uppercase tracking-widest">Cash ₹</label>
+                        <input
+                          type="number"
+                          value={splitCashRecord}
+                          onChange={(e) => setSplitCashRecord(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-emerald-50 border border-emerald-200 focus:border-emerald-400 rounded-xl px-4 py-2.5 text-sm font-black text-dark-900 outline-none"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[9px] font-bold text-blue-700 mb-1 uppercase tracking-widest">GPay ₹</label>
+                        <input
+                          type="number"
+                          value={splitGpayRecord}
+                          onChange={(e) => setSplitGpayRecord(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-blue-50 border border-blue-200 focus:border-blue-400 rounded-xl px-4 py-2.5 text-sm font-black text-dark-900 outline-none"
+                        />
+                      </div>
+                    </div>
+                    {(() => {
+                      const splitTotal = (parseFloat(splitCashRecord) || 0) + (parseFloat(splitGpayRecord) || 0);
+                      const expected = parseFloat(paymentAmount) || 0;
+                      const diff = splitTotal - expected;
+                      return (
+                        <div className={cn(
+                          "text-[9px] font-bold text-right",
+                          Math.abs(diff) < 0.01 ? "text-emerald-600" : "text-red-600"
+                        )}>
+                          Split total: ₹{splitTotal.toLocaleString()} / ₹{expected.toLocaleString()}
+                          {Math.abs(diff) >= 0.01 && (diff > 0 ? ` (+₹${diff})` : ` (-₹${Math.abs(diff)})`)}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {["Cash", "GPay", "Card"].map(mode => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setPaymentMode(mode)}
+                        className={cn(
+                          "py-2 px-3 rounded-xl text-xs font-bold uppercase transition-all border text-center cursor-pointer",
+                          paymentMode === mode
+                            ? "bg-dark-900 text-white border-dark-900 shadow-sm scale-[1.02]"
+                            : "bg-white text-dark-700 border-gray-200 hover:bg-gray-100"
+                        )}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
